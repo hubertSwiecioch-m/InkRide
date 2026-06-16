@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ble_title">Czujniki Bluetooth</string>
+    <string name="ble_cd_back">Wstecz</string>
+    <string name="ble_section_heart_rate">Tętno</string>
+    <string name="ble_section_cadence">Kadencja</string>
+    <string name="ble_none_paired">Brak sparowanego czujnika</string>
+    <string name="ble_paired_to">Sparowano: %1$s</string>
+    <string name="ble_action_scan">Skanuj</string>
+    <string name="ble_action_stop_scan">Zatrzymaj skanowanie</string>
+    <string name="ble_action_forget">Zapomnij</string>
+    <string name="ble_scanning">Skanowanie…</string>
+    <string name="ble_unknown_device">Nieznane urządzenie</string>
+    <string name="ble_error_bluetooth_off">Bluetooth jest wyłączony</string>
+    <string name="ble_error_permission_denied">Odmówiono uprawnień Bluetooth</string>
+    <string name="ble_error_unsupported">To urządzenie nie obsługuje Bluetooth LE</string>
+</resources>

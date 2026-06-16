@@ -1,0 +1,42 @@
+# IntelliJ / Android Studio
+.idea/
+*.iml
+
+# Gradle
+.gradle/
+
+# Local machine config
+local.properties
+
+# Build outputs
+build/
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin/Compose caches
+.kotlin/
+
+# R8 analyzer scratch output
+tmp/r8analysis/
+
+# Signing files / secrets
+keystore.properties
+*.jks
+*.keystore
+keystore.base64.txt
+
+# OS / logs
+.DS_Store
+*.log
+
+# AI / Agents & internal planning docs (not published)
+.agents/
+.claude/
+AGENTS.md
+GEMINI.md
+CLAUDE.md
+project_overview.md
+FEATURE_PLAN.md
+.github/copilot-instructions.md

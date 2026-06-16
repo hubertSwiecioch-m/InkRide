@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">InkRide</string>
+    <string name="dashboard_idle">Tryb gotowy</string>
+    <string name="dashboard_tracking">Rejestrowanie jazdy</string>
+    <string name="dashboard_speed_current">%1$s</string>
+    <string name="dashboard_speed_unit">km/h</string>
+    <string name="dashboard_speed_current_label">Prędkość</string>
+    <string name="dashboard_speed_avg_label">Śr. Prędkość</string>
+    <string name="dashboard_speed_max_label">Maks. Prędkość</string>
+    <string name="dashboard_distance_label">Dystans</string>
+    <string name="dashboard_distance_unit">km</string>
+    <string name="dashboard_time_moving_label">Czas jazdy</string>
+    <string name="dashboard_time_elapsed_label">Czas sesji</string>
+    <string name="dashboard_altitude_label">Wysokość</string>
+    <string name="dashboard_altitude_unit">m</string>
+    <string name="dashboard_elevation_gain_label">Przewyższenie</string>
+    <string name="dashboard_grade_label">Nachylenie</string>
+    <string name="dashboard_calories_label">Kalorie</string>
+    <string name="dashboard_calories_unit">kcal</string>
+    <string name="dashboard_power_label">Moc</string>
+    <string name="dashboard_power_unit">W</string>
+    <string name="dashboard_accuracy_label">Dokładność GPS</string>
+    <string name="dashboard_accuracy_unit">m</string>
+    <string name="dashboard_speed_avg">%1$s km/h</string>
+    <string name="dashboard_speed_max">%1$s km/h</string>
+    <string name="dashboard_distance">%1$s km</string>
+    <string name="dashboard_time_moving">Czas jazdy: %1$s</string>
+    <string name="dashboard_time_elapsed">Czas sesji: %1$s</string>
+    <string name="dashboard_altitude">Wysokość: %1$s m n.p.m.</string>
+    <string name="dashboard_elevation_gain">Przewyższenie: %1$s m</string>
+    <string name="dashboard_grade">Nachylenie: %1$s%%</string>
+    <string name="dashboard_calories">Kalorie: %1$s kcal</string>
+    <string name="dashboard_auto_pause_on">Auto-Pause: włączony</string>
+    <string name="dashboard_auto_pause_off">Auto-Pause: wyłączony</string>
+    <string name="dashboard_auto_pause_inline">Auto-Pause: %1$s</string>
+    <string name="dashboard_auto_pause_short_on">ON</string>
+    <string name="dashboard_auto_pause_short_off">OFF</string>
+    <string name="dashboard_accuracy">Dokładność GPS: %1$s %2$s</string>
+    <string name="dashboard_compass_label">Kompas</string>
+    <string name="dashboard_compass_n">N</string>
+    <string name="dashboard_compass_e">E</string>
+    <string name="dashboard_compass_s">S</string>
+    <string name="dashboard_compass_w">W</string>
+    <string name="dashboard_compass_ne">NE</string>
+    <string name="dashboard_compass_se">SE</string>
+    <string name="dashboard_compass_sw">SW</string>
+    <string name="dashboard_compass_nw">NW</string>
+
+    <string name="settings_weight">Waga</string>
+    <string name="settings_bike_weight">Waga roweru</string>
+    <string name="settings_bike_type">Typ roweru</string>
+    <string name="settings_bike_type_road">Szosowy</string>
+    <string name="settings_bike_type_mtb">MTB</string>
+    <string name="settings_bike_type_city">Miejski</string>
+    <string name="settings_language">Język</string>
+    <string name="settings_language_en">Angielski (English)</string>
+    <string name="settings_language_pl">Polski</string>
+    <string name="settings_weight_value">%1$s %2$s</string>
+    <string name="settings_age">Wiek</string>
+    <string name="settings_age_value">%1$s lat</string>
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_section_profile">Profil</string>
+    <string name="settings_section_preferences">Preferencje</string>
+    <string name="settings_section_dashboard">Dashboard</string>
+    <string name="settings_unit_kg">kg</string>
+    <string name="settings_unit_lbs">lbs</string>
+    <string name="settings_units_label">Jednostki</string>
+    <string name="settings_units_metric">Metryczne (km, kg)</string>
+    <string name="settings_units_imperial">Imperialne (mi, lbs)</string>
+    <string name="settings_show_distance">Pokaż dystans</string>
+    <string name="settings_show_moving_time">Pokaż czas jazdy</string>
+    <string name="settings_show_avg_speed">Pokaż śr. prędkość</string>
+    <string name="settings_show_max_speed">Pokaż maks. prędkość</string>
+    <string name="settings_show_elevation">Pokaż przewyższenie</string>
+    <string name="settings_show_calories">Pokaż kalorie</string>
+    <string name="settings_show_altitude">Pokaż wysokość</string>
+    <string name="settings_show_grade">Pokaż nachylenie</string>
+    <string name="settings_show_power">Pokaż moc</string>
+
+    <string name="dashboard_auto_pause_indicator">AUTO-PAUZA</string>
+    <string name="history_item_separator">  ·  </string>
+
+    <string name="nav_ride">Jazda</string>
+    <string name="nav_history">Historia</string>
+    <string name="nav_settings">Ustawienia</string>
+
+    <string name="dashboard_back_to_dashboard">Powrót do pulpitu</string>
+    <string name="dashboard_start">Start</string>
+    <string name="dashboard_stop">Stop</string>
+    <string name="dashboard_pause">Pauza</string>
+    <string name="dashboard_resume">Wznów</string>
+    <string name="dashboard_paused">Wstrzymano</string>
+    <string name="dashboard_reset">Reset</string>
+
+    <!-- Powiadomienia -->
+    <string name="notification_channel_name">Śledzenie jazdy</string>
+    <string name="notification_tracking_text">Trwa rejestrowanie jazdy…</string>
+
+    <!-- Historia -->
+    <string name="history_title">Historia przejazdów</string>
+    <string name="history_empty">Brak zarejestrowanych przejazdów.</string>
+    <string name="history_delete_all_btn">Usuń wszystko</string>
+    <string name="history_delete_all_title">Usuń całą historię</string>
+    <string name="history_delete_all_confirm">Czy na pewno chcesz usunąć całą historię przejazdów?</string>
+    <string name="history_delete_confirm_btn">Usuń</string>
+    <string name="history_cancel_btn">Anuluj</string>
+    <string name="history_delete_ride">Usuń przejazd</string>
+    <string name="history_delete_title">Usuń przejazd</string>
+    <string name="history_delete_confirm">Czy na pewno chcesz usunąć ten przejazd?</string>
+    <string name="history_ride_deleted">Przejazd usunięty</string>
+    <string name="history_undo">Cofnij</string>
+    <string name="history_back_btn">Wróć</string>
+
+    <!-- Szczegóły przejazdu -->
+    <string name="history_detail_title">Szczegóły przejazdu</string>
+    <string name="history_detail_not_found">Nie znaleziono przejazdu.</string>
+    <string name="history_detail_date">Początek</string>
+    <string name="history_detail_end">Koniec</string>
+    <string name="history_detail_distance">Dystans</string>
+    <string name="history_detail_moving_time">Czas jazdy</string>
+    <string name="history_detail_elapsed_time">Czas sesji</string>
+    <string name="history_detail_avg_speed">Śr. prędkość</string>
+    <string name="history_detail_max_speed">Maks. prędkość</string>
+    <string name="history_detail_elevation">Przewyższenie</string>
+    <string name="history_detail_calories">Kalorie</string>
+    <string name="history_detail_power">Śr. moc</string>
+    <string name="history_detail_section_time">Czas i data</string>
+    <string name="history_detail_section_performance">Osiągi</string>
+    <string name="history_detail_section_stats">Statystyki dodatkowe</string>
+
+    <!-- Błędy -->
+    <string name="error_no_internet">Brak połączenia z internetem.</string>
+    <string name="error_server">Wystąpił błąd serwera.</string>
+    <string name="error_unauthorized">Brak autoryzacji.</string>
+    <string name="error_disk_full">Dysk jest pełny.</string>
+    <string name="error_unknown">Wystąpił nieznany błąd.</string>
+    <string name="error_location_denied">Uprawnienie do lokalizacji jest wymagane do śledzenia trasy.</string>
+    <string name="error_gps_missing">GPS nie jest dostępny na tym urządzeniu.</string>
+    <string name="error_barometer_missing">Barometr nie jest dostępny. Śledzenie wysokości może być mniej dokładne.</string>
+    <string name="settings_error_weight_range">Dozwolony zakres: %1$d – %2$d %3$s</string>
+    <string name="settings_error_bike_weight_range">Dozwolony zakres: %1$d – %2$d %3$s</string>
+    <string name="settings_error_age_range">Dozwolony zakres: %1$d – %2$d lat</string>
+    <string name="settings_error_invalid_number">Wprowadź poprawną liczbę</string>
+</resources>

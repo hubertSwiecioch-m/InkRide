@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- GPX exports written by GpxExporter. Prefer app-scoped external storage,
+         falling back to internal files when external isn't mounted. -->
+    <external-files-path name="gpx_external" path="gpx/" />
+    <files-path name="gpx_internal" path="gpx/" />
+</paths>

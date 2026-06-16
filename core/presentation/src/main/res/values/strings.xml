@@ -1,0 +1,8 @@
+<resources>
+    <!-- Errors -->
+    <string name="error_no_internet">No internet connection.</string>
+    <string name="error_server">Server error occurred.</string>
+    <string name="error_unauthorized">Unauthorized access.</string>
+    <string name="error_disk_full">Disk is full.</string>
+    <string name="error_unknown">An unknown error occurred.</string>
+</resources>
