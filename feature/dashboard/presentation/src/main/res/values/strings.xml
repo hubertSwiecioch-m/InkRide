@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="error_location_permission_denied">Location permission is required to track your ride.</string>
+    <string name="error_gps_missing">GPS is missing on this device.</string>
+    <string name="error_barometer_missing">Barometer is missing on this device. Elevation data will be less accurate.</string>
+
+    <!-- Tracking status -->
+    <string name="dashboard_status_recording">RECORDING RIDE</string>
+    <string name="dashboard_status_paused">PAUSED</string>
+    <string name="dashboard_status_auto_paused">AUTO-PAUSED</string>
+    <string name="dashboard_status_ready">READY MODE</string>
+
+    <!-- Actions -->
+    <string name="dashboard_action_start">START</string>
+    <string name="dashboard_action_pause">PAUSE</string>
+    <string name="dashboard_action_resume">RESUME</string>
+    <string name="dashboard_action_stop">STOP</string>
+    <string name="dashboard_action_reset">RESET</string>
+
+    <!-- Page / section labels -->
+    <string name="dashboard_label_speed">Speed</string>
+    <string name="dashboard_label_compass">Compass</string>
+
+    <!-- Metric labels -->
+    <string name="dashboard_metric_distance">Distance</string>
+    <string name="dashboard_metric_moving_time">Moving Time</string>
+    <string name="dashboard_metric_avg_speed">Avg Speed</string>
+    <string name="dashboard_metric_grade">Grade</string>
+    <string name="dashboard_metric_max_speed">Max Speed</string>
+    <string name="dashboard_metric_elevation_gain">Elevation Gain</string>
+    <string name="dashboard_metric_calories">Calories</string>
+    <string name="dashboard_metric_altitude">Altitude</string>
+    <string name="dashboard_metric_power">Power</string>
+
+    <!-- Info bar -->
+    <string name="dashboard_gps_accuracy">GPS accuracy: %1$s %2$s</string>
+    <string name="dashboard_heart_rate">%1$s bpm</string>
+    <string name="dashboard_cadence">%1$s rpm</string>
+    <string name="dashboard_weather">Baro %1$s</string>
+    <string name="dashboard_weather_rising">↑ rising</string>
+    <string name="dashboard_weather_falling">↓ falling</string>
+    <string name="dashboard_weather_stable">→ stable</string>
+
+    <!-- Laps -->
+    <string name="dashboard_action_lap">LAP</string>
+    <string name="dashboard_last_lap">Last lap: %1$s · %2$s · %3$s</string>
+
+    <!-- Goals -->
+    <string name="dashboard_action_goal">GOAL</string>
+    <string name="dashboard_goal_remaining">%1$s %2$s to go</string>
+    <string name="dashboard_goal_reached">Goal reached!</string>
+    <string name="dashboard_goal_title">Set ride goal</string>
+    <string name="dashboard_goal_type_distance">Distance</string>
+    <string name="dashboard_goal_type_duration">Duration</string>
+    <string name="dashboard_goal_distance_hint">Target distance</string>
+    <string name="dashboard_goal_duration_hint">Target minutes</string>
+    <string name="dashboard_goal_set">Set goal</string>
+    <string name="dashboard_goal_clear">Clear goal</string>
+    <string name="dashboard_goal_cancel">Cancel</string>
+
+    <!-- Route following -->
+    <string name="dashboard_route_load">Load route</string>
+    <string name="dashboard_route_clear">Clear</string>
+    <string name="dashboard_route_active">Following route</string>
+    <string name="dashboard_route_following">Route: %1$s</string>
+    <string name="dashboard_route_next_turn">Next turn in %1$s</string>
+    <string name="dashboard_route_next_turn_named">Next turn in %1$s · %2$s</string>
+    <string name="dashboard_route_off">⚠ Off route by %1$s</string>
+    <string name="dashboard_route_error_read">Couldn\'t read the selected file.</string>
+    <string name="dashboard_route_error_empty">No track or route points found in that file.</string>
+    <string name="dashboard_route_error_malformed">That file isn\'t a valid GPX route.</string>
+    <string name="dashboard_route_clear_title">Clear route?</string>
+    <string name="dashboard_route_clear_message">You\'ll stop following this route. You can load it again later.</string>
+</resources>

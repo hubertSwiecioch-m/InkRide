@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared actions -->
+    <string name="history_action_cancel">Cancel</string>
+    <string name="history_action_delete">Delete</string>
+
+    <!-- Ride history list -->
+    <string name="ride_history_title">Ride History</string>
+    <string name="ride_history_delete_all">Delete all</string>
+    <string name="ride_history_delete_all_title">Delete all rides</string>
+    <string name="ride_history_delete_all_message">Are you sure you want to delete all ride history?</string>
+    <string name="ride_history_empty">No rides recorded yet.</string>
+    <string name="ride_history_cd_delete">Delete ride</string>
+    <string name="ride_history_deleted">Ride deleted</string>
+    <string name="ride_history_undo">Undo</string>
+    <string name="ride_history_stats">Stats</string>
+
+    <!-- Ride detail -->
+    <string name="ride_detail_title">Ride details</string>
+    <string name="ride_detail_cd_back">Back</string>
+    <string name="ride_detail_cd_delete">Delete ride</string>
+    <string name="ride_detail_cd_export">Export GPX</string>
+    <string name="ride_detail_export_share_title">Share GPX</string>
+    <string name="ride_detail_export_no_track">No GPS track was recorded for this ride.</string>
+    <string name="ride_detail_export_failed">Couldn\'t export this ride.</string>
+    <string name="ride_detail_delete_title">Delete ride</string>
+    <string name="ride_detail_delete_message">Are you sure you want to delete this ride?</string>
+    <string name="ride_detail_not_found">Ride not found.</string>
+    <string name="ride_detail_section_time">Time &amp; Date</string>
+    <string name="ride_detail_start">Start</string>
+    <string name="ride_detail_end">End</string>
+    <string name="ride_detail_moving_time">Moving time</string>
+    <string name="ride_detail_session_time">Session time</string>
+    <string name="ride_detail_section_performance">Performance</string>
+    <string name="ride_detail_distance">Distance</string>
+    <string name="ride_detail_avg_speed">Avg speed</string>
+    <string name="ride_detail_max_speed">Max speed</string>
+    <string name="ride_detail_section_additional">Additional Stats</string>
+    <string name="ride_detail_elevation_gain">Elevation gain</string>
+    <string name="ride_detail_calories">Calories</string>
+    <string name="ride_detail_avg_power">Avg Power</string>
+
+    <!-- Route map -->
+    <string name="ride_detail_section_route">Route</string>
+    <string name="ride_detail_show_route">Show route map</string>
+
+    <!-- Lap breakdown -->
+    <string name="ride_detail_section_laps">Laps</string>
+    <string name="ride_detail_lap_number">Lap</string>
+    <string name="ride_detail_lap_distance">Dist</string>
+    <string name="ride_detail_lap_time">Time</string>
+    <string name="ride_detail_lap_speed">Avg</string>
+
+    <!-- Lifetime stats -->
+    <string name="lifetime_stats_title">Lifetime Stats</string>
+    <string name="lifetime_stats_cd_back">Back</string>
+    <string name="lifetime_stats_total_rides">Total rides</string>
+    <string name="lifetime_stats_total_distance">Total distance</string>
+    <string name="lifetime_stats_total_time">Total moving time</string>
+    <string name="lifetime_stats_total_elevation">Total elevation gain</string>
+    <string name="lifetime_stats_max_speed">Top speed</string>
+    <string name="lifetime_stats_total_calories">Total calories</string>
+</resources>

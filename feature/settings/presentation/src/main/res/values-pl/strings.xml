@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_error_weight_range">Dozwolony zakres: %1$d – %2$d %3$s</string>
+    <string name="settings_error_bike_weight_range">Dozwolony zakres: %1$d – %2$d %3$s</string>
+    <string name="settings_error_age_range">Dozwolony zakres: %1$d – %2$d</string>
+    <string name="settings_error_invalid_number">Proszę podać poprawną liczbę</string>
+
+    <string name="settings_title">Ustawienia</string>
+
+    <!-- Tabs -->
+    <string name="settings_tab_profile">Profil</string>
+    <string name="settings_tab_bike">Rower</string>
+    <string name="settings_tab_display">Widok</string>
+
+    <!-- Profile -->
+    <string name="settings_section_personal">Osoba</string>
+    <string name="settings_section_bike">Rower</string>
+    <string name="settings_label_weight">Waga</string>
+    <string name="settings_label_age">Wiek</string>
+    <string name="settings_unit_years">lat</string>
+    <string name="settings_section_default_bike">Domyślny rower</string>
+    <string name="settings_label_bike_weight">Waga roweru</string>
+    <string name="settings_bike_type">Typ roweru</string>
+    <string name="settings_bike_type_road">Szosowy</string>
+    <string name="settings_bike_type_mtb">MTB</string>
+    <string name="settings_bike_type_city">Miejski</string>
+    <string name="settings_bike_profiles">Profile rowerów</string>
+    <string name="settings_bike_profiles_open">Zarządzaj</string>
+    <string name="settings_section_sensors">Czujniki</string>
+    <string name="settings_bluetooth_sensors">Czujniki Bluetooth</string>
+    <string name="settings_bluetooth_sensors_open">Zarządzaj</string>
+    <string name="settings_language">Język</string>
+    <string name="settings_language_english">Angielski</string>
+    <string name="settings_language_polish">Polski</string>
+
+    <!-- Units -->
+    <string name="settings_section_units">Jednostki</string>
+    <string name="settings_section_metrics">Metryki</string>
+    <string name="settings_units_metric">Metryczne (km, kg)</string>
+    <string name="settings_units_imperial">Imperialne (mi, lbs)</string>
+
+    <!-- Dashboard toggles -->
+    <string name="settings_show_distance">Pokaż dystans</string>
+    <string name="settings_show_moving_time">Pokaż czas jazdy</string>
+    <string name="settings_show_average_speed">Pokaż śr. prędkość</string>
+    <string name="settings_show_max_speed">Pokaż maks. prędkość</string>
+    <string name="settings_show_elevation_gain">Pokaż przewyższenie</string>
+    <string name="settings_show_calories">Pokaż kalorie</string>
+    <string name="settings_show_altitude">Pokaż wysokość</string>
+    <string name="settings_show_grade">Pokaż nachylenie</string>
+    <string name="settings_show_power">Pokaż moc</string>
+    <string name="settings_show_compass">Pokaż kompas</string>
+
+    <!-- Behavior -->
+    <string name="settings_section_behavior">Zachowanie</string>
+    <string name="settings_keep_screen_on">Nie wygaszaj ekranu podczas jazdy</string>
+
+    <!-- Alerts -->
+    <string name="settings_section_alerts">Alerty</string>
+    <string name="settings_alerts_hint">Wibracja po przekroczeniu limitu. Puste pole wyłącza alert.</string>
+    <string name="settings_alert_max_speed">Maks. prędkość</string>
+    <string name="settings_alert_hr_min">Min. tętno</string>
+    <string name="settings_alert_hr_max">Maks. tętno</string>
+
+    <!-- Bike profiles -->
+    <string name="bike_profiles_title">Profile rowerów</string>
+    <string name="bike_profiles_cd_back">Wstecz</string>
+    <string name="bike_profiles_empty">Brak profili rowerów. Dodaj jeden poniżej.</string>
+    <string name="bike_profiles_add">Dodaj profil</string>
+    <string name="bike_profiles_new">Nowy profil</string>
+    <string name="bike_profiles_editing">Edytuj profil</string>
+    <string name="bike_profiles_name">Nazwa</string>
+    <string name="bike_profiles_weight">Waga</string>
+    <string name="bike_profiles_edit">Edytuj</string>
+    <string name="bike_profiles_delete">Usuń</string>
+    <string name="bike_profiles_save">Zapisz</string>
+    <string name="bike_profiles_cancel">Anuluj</string>
+</resources>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="error_location_permission_denied">Do śledzenia przejazdu wymagane jest uprawnienie do lokalizacji.</string>
+    <string name="error_gps_missing">To urządzenie nie ma modułu GPS.</string>
+    <string name="error_barometer_missing">To urządzenie nie ma barometru. Dane o wysokości będą mniej dokładne.</string>
+
+    <!-- Tracking status -->
+    <string name="dashboard_status_recording">NAGRYWANIE</string>
+    <string name="dashboard_status_paused">WSTRZYMANO</string>
+    <string name="dashboard_status_auto_paused">AUTO-PAUZA</string>
+    <string name="dashboard_status_ready">GOTOWY</string>
+
+    <!-- Actions -->
+    <string name="dashboard_action_start">START</string>
+    <string name="dashboard_action_pause">PAUZA</string>
+    <string name="dashboard_action_resume">WZNÓW</string>
+    <string name="dashboard_action_stop">STOP</string>
+    <string name="dashboard_action_reset">RESET</string>
+
+    <!-- Page / section labels -->
+    <string name="dashboard_label_speed">Prędkość</string>
+    <string name="dashboard_label_compass">Kompas</string>
+
+    <!-- Metric labels -->
+    <string name="dashboard_metric_distance">Dystans</string>
+    <string name="dashboard_metric_moving_time">Czas jazdy</string>
+    <string name="dashboard_metric_avg_speed">Śr. prędkość</string>
+    <string name="dashboard_metric_grade">Nachylenie</string>
+    <string name="dashboard_metric_max_speed">Maks. prędkość</string>
+    <string name="dashboard_metric_elevation_gain">Przewyższenie</string>
+    <string name="dashboard_metric_calories">Kalorie</string>
+    <string name="dashboard_metric_altitude">Wysokość</string>
+    <string name="dashboard_metric_power">Moc</string>
+
+    <!-- Info bar -->
+    <string name="dashboard_gps_accuracy">Dokładność GPS: %1$s %2$s</string>
+    <string name="dashboard_heart_rate">%1$s bpm</string>
+    <string name="dashboard_cadence">%1$s obr/min</string>
+    <string name="dashboard_weather">Baro %1$s</string>
+    <string name="dashboard_weather_rising">↑ rośnie</string>
+    <string name="dashboard_weather_falling">↓ spada</string>
+    <string name="dashboard_weather_stable">→ stabilne</string>
+
+    <!-- Laps -->
+    <string name="dashboard_action_lap">OKRĄŻENIE</string>
+    <string name="dashboard_last_lap">Ostatnie okrążenie: %1$s · %2$s · %3$s</string>
+
+    <!-- Goals -->
+    <string name="dashboard_action_goal">CEL</string>
+    <string name="dashboard_goal_remaining">Pozostało %1$s %2$s</string>
+    <string name="dashboard_goal_reached">Cel osiągnięty!</string>
+    <string name="dashboard_goal_title">Ustaw cel jazdy</string>
+    <string name="dashboard_goal_type_distance">Dystans</string>
+    <string name="dashboard_goal_type_duration">Czas</string>
+    <string name="dashboard_goal_distance_hint">Docelowy dystans</string>
+    <string name="dashboard_goal_duration_hint">Docelowe minuty</string>
+    <string name="dashboard_goal_set">Ustaw cel</string>
+    <string name="dashboard_goal_clear">Wyczyść cel</string>
+    <string name="dashboard_goal_cancel">Anuluj</string>
+
+    <!-- Route following -->
+    <string name="dashboard_route_load">Wczytaj trasę</string>
+    <string name="dashboard_route_clear">Wyczyść</string>
+    <string name="dashboard_route_active">Podążanie trasą</string>
+    <string name="dashboard_route_following">Trasa: %1$s</string>
+    <string name="dashboard_route_next_turn">Następny zwrot za %1$s</string>
+    <string name="dashboard_route_next_turn_named">Następny zwrot za %1$s · %2$s</string>
+    <string name="dashboard_route_off">⚠ Poza trasą o %1$s</string>
+    <string name="dashboard_route_error_read">Nie można odczytać wybranego pliku.</string>
+    <string name="dashboard_route_error_empty">Brak punktów trasy w tym pliku.</string>
+    <string name="dashboard_route_error_malformed">To nie jest prawidłowy plik GPX.</string>
+    <string name="dashboard_route_clear_title">Wyczyścić trasę?</string>
+    <string name="dashboard_route_clear_message">Przestaniesz podążać tą trasą. Możesz wczytać ją ponownie później.</string>
+</resources>

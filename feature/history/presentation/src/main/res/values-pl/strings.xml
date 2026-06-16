@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared actions -->
+    <string name="history_action_cancel">Anuluj</string>
+    <string name="history_action_delete">Usuń</string>
+
+    <!-- Ride history list -->
+    <string name="ride_history_title">Historia przejazdów</string>
+    <string name="ride_history_delete_all">Usuń wszystko</string>
+    <string name="ride_history_delete_all_title">Usuń wszystkie przejazdy</string>
+    <string name="ride_history_delete_all_message">Czy na pewno chcesz usunąć całą historię przejazdów?</string>
+    <string name="ride_history_empty">Brak zapisanych przejazdów.</string>
+    <string name="ride_history_cd_delete">Usuń przejazd</string>
+    <string name="ride_history_deleted">Przejazd usunięty</string>
+    <string name="ride_history_undo">Cofnij</string>
+    <string name="ride_history_stats">Statystyki</string>
+
+    <!-- Ride detail -->
+    <string name="ride_detail_title">Szczegóły przejazdu</string>
+    <string name="ride_detail_cd_back">Wstecz</string>
+    <string name="ride_detail_cd_delete">Usuń przejazd</string>
+    <string name="ride_detail_cd_export">Eksportuj GPX</string>
+    <string name="ride_detail_export_share_title">Udostępnij GPX</string>
+    <string name="ride_detail_export_no_track">Dla tego przejazdu nie zapisano śladu GPS.</string>
+    <string name="ride_detail_export_failed">Nie udało się wyeksportować przejazdu.</string>
+    <string name="ride_detail_delete_title">Usuń przejazd</string>
+    <string name="ride_detail_delete_message">Czy na pewno chcesz usunąć ten przejazd?</string>
+    <string name="ride_detail_not_found">Nie znaleziono przejazdu.</string>
+    <string name="ride_detail_section_time">Czas i data</string>
+    <string name="ride_detail_start">Początek</string>
+    <string name="ride_detail_end">Koniec</string>
+    <string name="ride_detail_moving_time">Czas jazdy</string>
+    <string name="ride_detail_session_time">Czas sesji</string>
+    <string name="ride_detail_section_performance">Wydajność</string>
+    <string name="ride_detail_distance">Dystans</string>
+    <string name="ride_detail_avg_speed">Śr. prędkość</string>
+    <string name="ride_detail_max_speed">Maks. prędkość</string>
+    <string name="ride_detail_section_additional">Dodatkowe statystyki</string>
+    <string name="ride_detail_elevation_gain">Przewyższenie</string>
+    <string name="ride_detail_calories">Kalorie</string>
+    <string name="ride_detail_avg_power">Śr. moc</string>
+
+    <!-- Route map -->
+    <string name="ride_detail_section_route">Trasa</string>
+    <string name="ride_detail_show_route">Pokaż mapę trasy</string>
+
+    <!-- Lap breakdown -->
+    <string name="ride_detail_section_laps">Okrążenia</string>
+    <string name="ride_detail_lap_number">Okr.</string>
+    <string name="ride_detail_lap_distance">Dyst.</string>
+    <string name="ride_detail_lap_time">Czas</string>
+    <string name="ride_detail_lap_speed">Śr.</string>
+
+    <!-- Lifetime stats -->
+    <string name="lifetime_stats_title">Statystyki łączne</string>
+    <string name="lifetime_stats_cd_back">Wstecz</string>
+    <string name="lifetime_stats_total_rides">Liczba przejazdów</string>
+    <string name="lifetime_stats_total_distance">Łączny dystans</string>
+    <string name="lifetime_stats_total_time">Łączny czas jazdy</string>
+    <string name="lifetime_stats_total_elevation">Łączne przewyższenie</string>
+    <string name="lifetime_stats_max_speed">Maks. prędkość</string>
+    <string name="lifetime_stats_total_calories">Łączne kalorie</string>
+</resources>

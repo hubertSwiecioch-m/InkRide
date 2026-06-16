@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_error_weight_range">Allowed range: %1$d – %2$d %3$s</string>
+    <string name="settings_error_bike_weight_range">Allowed range: %1$d – %2$d %3$s</string>
+    <string name="settings_error_age_range">Allowed range: %1$d – %2$d</string>
+    <string name="settings_error_invalid_number">Please enter a valid number</string>
+
+    <string name="settings_title">Settings</string>
+
+    <!-- Tabs -->
+    <string name="settings_tab_profile">Profile</string>
+    <string name="settings_tab_bike">Bike</string>
+    <string name="settings_tab_display">Display</string>
+
+    <!-- Profile -->
+    <string name="settings_section_personal">Personal</string>
+    <string name="settings_section_bike">Bike</string>
+    <string name="settings_label_weight">Weight</string>
+    <string name="settings_label_age">Age</string>
+    <string name="settings_unit_years">yrs</string>
+    <string name="settings_section_default_bike">Default Bike</string>
+    <string name="settings_label_bike_weight">Bike Weight</string>
+    <string name="settings_bike_type">Bike Type</string>
+    <string name="settings_bike_type_road">Road</string>
+    <string name="settings_bike_type_mtb">MTB</string>
+    <string name="settings_bike_type_city">City</string>
+    <string name="settings_bike_profiles">Bike profiles</string>
+    <string name="settings_bike_profiles_open">Manage</string>
+    <string name="settings_section_sensors">Sensors</string>
+    <string name="settings_bluetooth_sensors">Bluetooth sensors</string>
+    <string name="settings_bluetooth_sensors_open">Manage</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_polish">Polish</string>
+
+    <!-- Units -->
+    <string name="settings_section_units">Units</string>
+    <string name="settings_section_metrics">Metrics</string>
+    <string name="settings_units_metric">Metric (km, kg)</string>
+    <string name="settings_units_imperial">Imperial (mi, lbs)</string>
+
+    <!-- Dashboard toggles -->
+    <string name="settings_show_distance">Show Distance</string>
+    <string name="settings_show_moving_time">Show Moving Time</string>
+    <string name="settings_show_average_speed">Show Average Speed</string>
+    <string name="settings_show_max_speed">Show Max Speed</string>
+    <string name="settings_show_elevation_gain">Show Elevation Gain</string>
+    <string name="settings_show_calories">Show Calories</string>
+    <string name="settings_show_altitude">Show Altitude</string>
+    <string name="settings_show_grade">Show Grade</string>
+    <string name="settings_show_power">Show Power</string>
+    <string name="settings_show_compass">Show Compass</string>
+
+    <!-- Behavior -->
+    <string name="settings_section_behavior">Behavior</string>
+    <string name="settings_keep_screen_on">Keep screen on while tracking</string>
+
+    <!-- Alerts -->
+    <string name="settings_section_alerts">Alerts</string>
+    <string name="settings_alerts_hint">Vibrate when a limit is crossed. Leave blank to disable.</string>
+    <string name="settings_alert_max_speed">Max speed</string>
+    <string name="settings_alert_hr_min">HR zone min</string>
+    <string name="settings_alert_hr_max">HR zone max</string>
+
+    <!-- Bike profiles -->
+    <string name="bike_profiles_title">Bike profiles</string>
+    <string name="bike_profiles_cd_back">Back</string>
+    <string name="bike_profiles_empty">No bike profiles yet. Add one below.</string>
+    <string name="bike_profiles_add">Add profile</string>
+    <string name="bike_profiles_new">New profile</string>
+    <string name="bike_profiles_editing">Edit profile</string>
+    <string name="bike_profiles_name">Name</string>
+    <string name="bike_profiles_weight">Weight</string>
+    <string name="bike_profiles_edit">Edit</string>
+    <string name="bike_profiles_delete">Delete</string>
+    <string name="bike_profiles_save">Save</string>
+    <string name="bike_profiles_cancel">Cancel</string>
+</resources>
