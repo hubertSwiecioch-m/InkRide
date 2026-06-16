@@ -18,6 +18,9 @@ captures/
 # Kotlin/Compose caches
 .kotlin/
 
+# R8 analyzer scratch output
+tmp/r8analysis/
+
 # Signing files / secrets
 keystore.properties
 *.jks
