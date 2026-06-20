@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ble_title">Bluetooth sensors</string>
+    <string name="ble_cd_back">Back</string>
+    <string name="ble_section_heart_rate">Heart rate</string>
+    <string name="ble_section_cadence">Cadence</string>
+    <string name="ble_none_paired">No sensor paired</string>
+    <string name="ble_paired_to">Paired: %1$s</string>
+    <string name="ble_action_scan">Scan</string>
+    <string name="ble_action_stop_scan">Stop scan</string>
+    <string name="ble_action_forget">Forget</string>
+    <string name="ble_scanning">Scanning…</string>
+    <string name="ble_unknown_device">Unknown device</string>
+    <string name="ble_error_bluetooth_off">Bluetooth is turned off</string>
+    <string name="ble_error_permission_denied">Bluetooth permission denied</string>
+    <string name="ble_error_unsupported">Bluetooth LE not supported on this device</string>
+</resources>
