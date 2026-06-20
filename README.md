@@ -2,6 +2,15 @@
 
 InkRide is a specialized Android bicycle computer application, meticulously engineered and optimized for **E-Ink displays**. It prioritizes high legibility under direct sunlight, minimalist aesthetics, and "de-googled" privacy.
 
+<p align="center">
+  <img src="screenshots/Screenshot_20260620_135926.png" width="200" alt="Dashboard - Speed">
+  <img src="screenshots/Screenshot_20260620_135950.png" width="200" alt="Dashboard - Compass">
+  <img src="screenshots/Screenshot_20260620_140016.png" width="200" alt="Ride History">
+  <img src="screenshots/Screenshot_20260620_140035.png" width="200" alt="Route map">
+</p>
+
+📸 See **[SCREENSHOTS.md](SCREENSHOTS.md)** for a full walkthrough of every screen and feature.
+
 ## 🎨 Design Process & Philosophy
 
 The design of InkRide was driven by a strict "E-Ink first" approach, focusing on the unique constraints and strengths of electronic paper technology.
