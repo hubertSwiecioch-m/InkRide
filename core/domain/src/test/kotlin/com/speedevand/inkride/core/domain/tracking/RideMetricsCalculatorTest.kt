@@ -115,6 +115,72 @@ class RideMetricsCalculatorTest {
     }
 
     @Test
+    fun `barometric drift while stopped is not counted as elevation gain`() {
+        // Ride flat at 100m, then stop. While standing still the barometer
+        // climbs 10m as the weather pressure falls. When riding resumes the
+        // altitude has settled at the drifted value — none of that drift may be
+        // counted as elevation gain (the baseline re-anchors during the stop).
+        calculator.process(
+            sampleAt(0L, latitude = 0.0, longitude = 0.0, altitudeBarometer = 100.0, speedFromGpsMps = 10.0, accuracy = 5.0f),
+            settings
+        )
+        calculator.process(
+            sampleAt(1000L, latitude = 0.0, longitude = 0.0, altitudeBarometer = 100.0, speedFromGpsMps = 10.0, accuracy = 5.0f),
+            settings
+        )
+        // Stop (speed 0) while the barometer drifts up to 110m. Enough samples to
+        // (a) cross the 5-fix sustained-stop threshold that arms the baseline
+        // re-anchor and (b) let the EMA settle so the baseline tracks to ~110m.
+        listOf(2000L, 2500L, 3000L, 3500L, 4000L, 4500L, 5000L).forEach { t ->
+            calculator.process(
+                sampleAt(t, latitude = 0.0, longitude = 0.0, altitudeBarometer = 110.0, speedFromGpsMps = 0.0, accuracy = 5.0f),
+                settings
+            )
+        }
+        // Resume riding at the drifted altitude.
+        val metrics = calculator.process(
+            sampleAt(6000L, latitude = 0.0001, longitude = 0.0, altitudeBarometer = 110.0, speedFromGpsMps = 10.0, accuracy = 5.0f),
+            settings
+        )
+        // Without the re-anchor the frozen 100m baseline would book ~9–10m of
+        // phantom gain here. With it, essentially nothing is counted.
+        assertThat(metrics.elevationGainM).isLessThan(1.0)
+    }
+
+    @Test
+    fun `single stationary noise fix mid-climb does not drop pending elevation gain`() {
+        // Slow steady climb where each barometer step is below the 1m noise
+        // threshold, so gain is banked cumulatively against a held baseline. One
+        // GPS fix briefly reads a stationary Doppler (a noise dip below the
+        // movement threshold) — it must NOT re-anchor the baseline and silently
+        // discard the sub-threshold gain accumulated so far.
+        calculator.process(
+            sampleAt(0L, latitude = 0.0, longitude = 0.0, altitudeBarometer = 100.0, speedFromGpsMps = 4.0, accuracy = 5.0f),
+            settings
+        )
+        // Climb ~0.8m/sample (smoothed steps stay under the 1m bank threshold for
+        // a step or two) while moving.
+        calculator.process(
+            sampleAt(1000L, latitude = 0.00002, longitude = 0.0, altitudeBarometer = 101.6, speedFromGpsMps = 4.0, accuracy = 5.0f),
+            settings
+        )
+        // Single noise dip: Doppler reads 0, but it's a lone fix — not a sustained
+        // stop — so the baseline must hold.
+        calculator.process(
+            sampleAt(2000L, latitude = 0.00004, longitude = 0.0, altitudeBarometer = 103.2, speedFromGpsMps = 0.0, accuracy = 5.0f),
+            settings
+        )
+        // Keep climbing.
+        val metrics = calculator.process(
+            sampleAt(3000L, latitude = 0.00006, longitude = 0.0, altitudeBarometer = 105.0, speedFromGpsMps = 4.0, accuracy = 5.0f),
+            settings
+        )
+        // The real ~4–5m climb must be recorded, not swallowed by a premature
+        // re-anchor on the lone stationary fix.
+        assertThat(metrics.elevationGainM).isGreaterThan(2.0)
+    }
+
+    @Test
     fun `EMA smoothing with barometer uses alpha 0_5`() {
         calculator.process(sampleAt(0L, altitudeBarometer = 100.0, speedFromGpsMps = 10.0, accuracy = 5.0f), settings)
         val metrics = calculator.process(
@@ -188,6 +254,45 @@ class RideMetricsCalculatorTest {
         )
         // GPS speed 8.0 m/s = 28.8 km/h
         assertThat(metrics.currentSpeedKmh).isEqualTo(28.8)
+    }
+
+    @Test
+    fun `residual GPS speed below threshold reads as zero when stationary`() {
+        // Standing still: GPS Doppler reports a residual 1.0 km/h (0.278 m/s),
+        // below the 1.5 km/h auto-pause threshold. The speedometer must show 0,
+        // not the phantom crawl.
+        calculator.process(sampleAt(0L, latitude = 0.0, longitude = 0.0, accuracy = 5.0f), settings)
+        val metrics = calculator.process(
+            sampleAt(1000L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 0.278, accuracy = 5.0f),
+            settings
+        )
+        assertThat(metrics.currentSpeedKmh).isZero()
+    }
+
+    @Test
+    fun `residual GPS speed below threshold does not poison max speed`() {
+        // A real moving sample sets a max, then standstill noise must not raise it.
+        calculator.process(sampleAt(0L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 8.0, accuracy = 5.0f), settings)
+        calculator.process(sampleAt(1000L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 8.0, accuracy = 5.0f), settings)
+        val metrics = calculator.process(
+            sampleAt(2000L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 0.4, accuracy = 5.0f),
+            settings
+        )
+        // 8.0 m/s = 28.8 km/h max; the 0.4 m/s residual must not register.
+        assertThat(metrics.maxSpeedKmh).isEqualTo(28.8)
+    }
+
+    @Test
+    fun `stationary residual speed is not carried forward onto baro samples`() {
+        // Stop with a residual Doppler reading, then a barometer-only sample
+        // arrives — the carried-forward readout must be 0, not the residual.
+        calculator.process(sampleAt(0L, latitude = 0.0, longitude = 0.0, accuracy = 5.0f), settings)
+        calculator.process(
+            sampleAt(1000L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 0.3, accuracy = 5.0f),
+            settings
+        )
+        val metrics = calculator.process(baroSampleAt(1200L, altitudeBarometer = 100.0), settings)
+        assertThat(metrics.currentSpeedKmh).isZero()
     }
 
     @Test
@@ -289,6 +394,29 @@ class RideMetricsCalculatorTest {
             settings
         )
         assertThat(metrics.averageSpeedKmh).isGreaterThan(0.0)
+    }
+
+    @Test
+    fun `average speed stays consistent with distance across a GPS dropout`() {
+        // A fix returns 60s after the previous one (a dropout far beyond the 10s
+        // energy cap), having covered ~111m in a straight line. Moving time and
+        // distance must use the SAME interval, so the average reflects the actual
+        // ~6.66 km/h straight-line speed — not the previously-inflated value
+        // where full distance was divided by a capped 10s of moving time.
+        val warm = RideMetricsCalculator(warmupReliableFixes = 1)
+        warm.process(
+            sampleAt(0L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 2.0, accuracy = 5.0f),
+            settings
+        )
+        val metrics = warm.process(
+            sampleAt(60_000L, latitude = 0.001, longitude = 0.0, speedFromGpsMps = 2.0, accuracy = 5.0f),
+            settings
+        )
+        // ~111m over 60s ≈ 6.66 km/h. Allow a small margin for haversine rounding.
+        // The pre-fix bug produced ~40 km/h (111m ÷ 10s), so a tight upper bound
+        // is what actually guards the regression.
+        assertThat(metrics.averageSpeedKmh).isGreaterThan(5.0)
+        assertThat(metrics.averageSpeedKmh).isLessThan(8.0)
     }
 
     // ── Bearing ────────────────────────────────────────────────────────────
