@@ -20,7 +20,7 @@ enum class GpxExportError : Error {
     NO_TRACK,
 
     /** The ride couldn't be read, or the file couldn't be written. */
-    FAILED
+    FAILED,
 }
 
 /**
@@ -41,37 +41,38 @@ interface GpxExporter {
 class AndroidGpxExporter(
     private val context: Context,
     private val historyRepository: RideHistoryRepository,
-    private val trackPointRepository: RideTrackPointRepository
+    private val trackPointRepository: RideTrackPointRepository,
 ) : GpxExporter {
+    override suspend fun export(rideId: Long): Result<Uri, GpxExportError> =
+        withContext(Dispatchers.IO) {
+            val ride =
+                when (val result = historyRepository.getById(rideId)) {
+                    is Result.Error -> return@withContext Result.Error(GpxExportError.FAILED)
+                    is Result.Success -> result.data
+                }
+            val points =
+                when (val result = trackPointRepository.getPoints(rideId)) {
+                    is Result.Error -> return@withContext Result.Error(GpxExportError.FAILED)
+                    is Result.Success -> result.data
+                }
+            if (points.isEmpty()) {
+                return@withContext Result.Error(GpxExportError.NO_TRACK)
+            }
 
-    override suspend fun export(rideId: Long): Result<Uri, GpxExportError> = withContext(Dispatchers.IO) {
-        val ride = when (val result = historyRepository.getById(rideId)) {
-            is Result.Error -> return@withContext Result.Error(GpxExportError.FAILED)
-            is Result.Success -> result.data
-        }
-        val points = when (val result = trackPointRepository.getPoints(rideId)) {
-            is Result.Error -> return@withContext Result.Error(GpxExportError.FAILED)
-            is Result.Success -> result.data
-        }
-        if (points.isEmpty()) {
-            return@withContext Result.Error(GpxExportError.NO_TRACK)
+            try {
+                val gpx = GpxBuilder.build(ride, points)
+                val baseDir = context.getExternalFilesDir(null) ?: context.filesDir
+                val dir = File(baseDir, GPX_DIR).apply { mkdirs() }
+                val file = File(dir, "inkride_${fileTimestamp(ride.startTimestamp)}.gpx")
+                file.writeText(gpx)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                Result.Success(uri)
+            } catch (e: Exception) {
+                Result.Error(GpxExportError.FAILED)
+            }
         }
 
-        try {
-            val gpx = GpxBuilder.build(ride, points)
-            val baseDir = context.getExternalFilesDir(null) ?: context.filesDir
-            val dir = File(baseDir, GPX_DIR).apply { mkdirs() }
-            val file = File(dir, "inkride_${fileTimestamp(ride.startTimestamp)}.gpx")
-            file.writeText(gpx)
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-            Result.Success(uri)
-        } catch (e: Exception) {
-            Result.Error(GpxExportError.FAILED)
-        }
-    }
-
-    private fun fileTimestamp(ms: Long): String =
-        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(ms))
+    private fun fileTimestamp(ms: Long): String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(ms))
 
     private companion object {
         const val GPX_DIR = "gpx"

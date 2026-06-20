@@ -52,10 +52,15 @@ class DashboardViewModel(
     private fun loadRoute(uri: Uri) {
         viewModelScope.launch {
             when (val result = routeLoader.load(uri)) {
-                is Result.Success -> rideTracker.loadRoute(result.data)
-                is Result.Error -> _events.send(
-                    DashboardEvent.ShowError(UiText.StringResource(result.error.messageRes()))
-                )
+                is Result.Success -> {
+                    rideTracker.loadRoute(result.data)
+                }
+
+                is Result.Error -> {
+                    _events.send(
+                        DashboardEvent.ShowError(UiText.StringResource(result.error.messageRes())),
+                    )
+                }
             }
         }
     }
@@ -66,7 +71,7 @@ class DashboardViewModel(
         viewModelScope.launch {
             combine(
                 rideTracker.state,
-                userSettingsRepository.observeSettings()
+                userSettingsRepository.observeSettings(),
             ) { tracking, settings ->
                 DashboardState(
                     rideMetrics = tracking.metrics.toRideMetricsUi(settings.units),
@@ -74,9 +79,10 @@ class DashboardViewModel(
                     userSettings = settings,
                     lastLap = tracking.laps.lastOrNull()?.toSummaryUi(settings.units),
                     goal = tracking.activeGoal?.let { goalProgressUi(it, tracking.metrics, settings.units) },
-                    route = tracking.activeRoute?.let {
-                        routeProgressUi(it, tracking.routeProgress, settings.units)
-                    }
+                    route =
+                        tracking.activeRoute?.let {
+                            routeProgressUi(it, tracking.routeProgress, settings.units)
+                        },
                 )
             }.collect { newState -> _state.value = newState }
         }
@@ -93,7 +99,9 @@ class DashboardViewModel(
     private fun toggleTracking() {
         when (rideTracker.state.value.status) {
             TrackingStatus.IDLE -> rideTracker.start()
+
             TrackingStatus.TRACKING -> rideTracker.pause()
+
             // start() resumes both a manual PAUSED and an AUTO_PAUSED ride back
             // to TRACKING (and clears the auto-pause timer).
             TrackingStatus.PAUSED, TrackingStatus.AUTO_PAUSED -> rideTracker.start()
@@ -101,8 +109,9 @@ class DashboardViewModel(
     }
 }
 
-private fun GpxLoadError.messageRes(): Int = when (this) {
-    GpxLoadError.READ_FAILED -> R.string.dashboard_route_error_read
-    GpxLoadError.EMPTY -> R.string.dashboard_route_error_empty
-    GpxLoadError.MALFORMED -> R.string.dashboard_route_error_malformed
-}
+private fun GpxLoadError.messageRes(): Int =
+    when (this) {
+        GpxLoadError.READ_FAILED -> R.string.dashboard_route_error_read
+        GpxLoadError.EMPTY -> R.string.dashboard_route_error_empty
+        GpxLoadError.MALFORMED -> R.string.dashboard_route_error_malformed
+    }

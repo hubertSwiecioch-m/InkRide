@@ -15,7 +15,6 @@ class RoomConventionPlugin : Plugin<Project> {
             }
 
             extensions.configure<RoomExtension> {
-                // The schema directory is where Room will dump its schema JSON files.
                 schemaDirectory("$projectDir/schemas")
             }
 

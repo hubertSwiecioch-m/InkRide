@@ -6,7 +6,8 @@ import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
-val settingsDataModule = module {
-    singleOf(::RoomUserSettingsRepository) { bind<UserSettingsRepository>() }
-    singleOf(::RoomBikeProfileRepository) { bind<BikeProfileRepository>() }
-}
+val settingsDataModule =
+    module {
+        singleOf(::RoomUserSettingsRepository) { bind<UserSettingsRepository>() }
+        singleOf(::RoomBikeProfileRepository) { bind<BikeProfileRepository>() }
+    }

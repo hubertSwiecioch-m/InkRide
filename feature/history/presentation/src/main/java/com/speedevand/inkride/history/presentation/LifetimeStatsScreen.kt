@@ -34,7 +34,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun LifetimeStatsRoot(
     onNavigateBack: () -> Unit,
-    viewModel: LifetimeStatsViewModel = koinViewModel()
+    viewModel: LifetimeStatsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -51,7 +51,7 @@ fun LifetimeStatsRoot(
 @Composable
 fun LifetimeStatsScreen(
     state: LifetimeStatsState,
-    onAction: (LifetimeStatsAction) -> Unit
+    onAction: (LifetimeStatsAction) -> Unit,
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -61,27 +61,28 @@ fun LifetimeStatsScreen(
                     TextMMD(
                         text = stringResource(R.string.lifetime_stats_title),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = { onAction(LifetimeStatsAction.OnBackClick) }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.lifetime_stats_cd_back)
+                            contentDescription = stringResource(R.string.lifetime_stats_cd_back),
                         )
                     }
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             StatRow(stringResource(R.string.lifetime_stats_total_rides), state.stats.totalRides)
             HorizontalDividerMMD()
@@ -99,13 +100,17 @@ fun LifetimeStatsScreen(
 }
 
 @Composable
-private fun StatRow(label: String, value: String) {
+private fun StatRow(
+    label: String,
+    value: String,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         TextMMD(text = label, style = MaterialTheme.typography.bodyLarge)
         TextMMD(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -117,18 +122,20 @@ private fun StatRow(label: String, value: String) {
 private fun LifetimeStatsScreenPreview() {
     InkRideTheme {
         LifetimeStatsScreen(
-            state = LifetimeStatsState(
-                isLoading = false,
-                stats = LifetimeStatsUi(
-                    totalRides = "42",
-                    totalDistance = "1284.5 km",
-                    totalMovingTime = "63h 12m",
-                    totalElevationGain = "18420 m",
-                    maxSpeed = "61.3 km/h",
-                    totalCalories = "48210 kcal"
-                )
-            ),
-            onAction = {}
+            state =
+                LifetimeStatsState(
+                    isLoading = false,
+                    stats =
+                        LifetimeStatsUi(
+                            totalRides = "42",
+                            totalDistance = "1284.5 km",
+                            totalMovingTime = "63h 12m",
+                            totalElevationGain = "18420 m",
+                            maxSpeed = "61.3 km/h",
+                            totalCalories = "48210 kcal",
+                        ),
+                ),
+            onAction = {},
         )
     }
 }

@@ -44,38 +44,40 @@ import com.speedevand.inkride.dashboard.presentation.isActiveRide
 @Composable
 fun LapGoalStatus(
     state: DashboardState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     if (!state.status.isActiveRide) return
     if (state.lastLap == null && state.goal == null) return
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_TINY)
+        verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_TINY),
     ) {
         state.goal?.let { goal ->
             TextMMD(
-                text = if (goal.reached) {
-                    stringResource(R.string.dashboard_goal_reached)
-                } else {
-                    stringResource(R.string.dashboard_goal_remaining, goal.remainingValue, goal.unitLabel)
-                },
+                text =
+                    if (goal.reached) {
+                        stringResource(R.string.dashboard_goal_reached)
+                    } else {
+                        stringResource(R.string.dashboard_goal_remaining, goal.remainingValue, goal.unitLabel)
+                    },
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
         }
 
         state.lastLap?.let { lap ->
             TextMMD(
-                text = stringResource(
-                    R.string.dashboard_last_lap,
-                    lap.distance,
-                    lap.time,
-                    lap.averageSpeed
-                ),
+                text =
+                    stringResource(
+                        R.string.dashboard_last_lap,
+                        lap.distance,
+                        lap.time,
+                        lap.averageSpeed,
+                    ),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.outline,
             )
         }
     }
@@ -86,7 +88,7 @@ fun LapGoalStatus(
 fun GoalBottomSheet(
     units: MeasurementUnits,
     onDismiss: () -> Unit,
-    onAction: (DashboardAction) -> Unit
+    onAction: (DashboardAction) -> Unit,
 ) {
     var isDistance by remember { mutableStateOf(true) }
     var value by remember { mutableStateOf("") }
@@ -95,26 +97,27 @@ fun GoalBottomSheet(
 
     ModalBottomSheetMMD(onDismissRequest = onDismiss) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             TextMMD(
                 text = stringResource(R.string.dashboard_goal_title),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
 
             GoalTypeRow(
                 label = stringResource(R.string.dashboard_goal_type_distance),
                 selected = isDistance,
-                onClick = { isDistance = true }
+                onClick = { isDistance = true },
             )
             GoalTypeRow(
                 label = stringResource(R.string.dashboard_goal_type_duration),
                 selected = !isDistance,
-                onClick = { isDistance = false }
+                onClick = { isDistance = false },
             )
 
             TextFieldMMD(
@@ -122,30 +125,32 @@ fun GoalBottomSheet(
                 onValueChange = { value = it },
                 label = {
                     TextMMD(
-                        text = if (isDistance) {
-                            "${stringResource(R.string.dashboard_goal_distance_hint)} ($distanceUnit)"
-                        } else {
-                            stringResource(R.string.dashboard_goal_duration_hint)
-                        }
+                        text =
+                            if (isDistance) {
+                                "${stringResource(R.string.dashboard_goal_distance_hint)} ($distanceUnit)"
+                            } else {
+                                stringResource(R.string.dashboard_goal_duration_hint)
+                            },
                     )
                 },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = if (isDistance) KeyboardType.Decimal else KeyboardType.Number
-                ),
+                keyboardOptions =
+                    KeyboardOptions(
+                        keyboardType = if (isDistance) KeyboardType.Decimal else KeyboardType.Number,
+                    ),
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 OutlinedButtonMMD(
                     modifier = Modifier.weight(1f),
                     onClick = {
                         onAction(DashboardAction.OnClearGoal)
                         onDismiss()
-                    }
+                    },
                 ) {
                     TextMMD(text = stringResource(R.string.dashboard_goal_clear))
                 }
@@ -154,7 +159,7 @@ fun GoalBottomSheet(
                     onClick = {
                         buildGoal(isDistance, value, imperial)?.let { onAction(DashboardAction.OnSetGoal(it)) }
                         onDismiss()
-                    }
+                    },
                 ) {
                     TextMMD(text = stringResource(R.string.dashboard_goal_set))
                 }
@@ -164,21 +169,30 @@ fun GoalBottomSheet(
 }
 
 @Composable
-private fun GoalTypeRow(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun GoalTypeRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         TextMMD(text = label, style = MaterialTheme.typography.bodyLarge)
         RadioButtonMMD(selected = selected, onClick = onClick)
     }
 }
 
-private fun buildGoal(isDistance: Boolean, raw: String, imperial: Boolean): RideGoal? {
+private fun buildGoal(
+    isDistance: Boolean,
+    raw: String,
+    imperial: Boolean,
+): RideGoal? {
     val parsed = raw.trim().toDoubleOrNull() ?: return null
     if (parsed <= 0.0) return null
     return if (isDistance) {

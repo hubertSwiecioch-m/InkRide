@@ -12,6 +12,11 @@ import kotlinx.coroutines.flow.Flow
  */
 interface BleSensorDataSource {
     fun observeSamples(): Flow<BleSample>
-    fun connect(hrmAddress: String?, cadenceAddress: String?)
+
+    fun connect(
+        hrmAddress: String?,
+        cadenceAddress: String?,
+    )
+
     fun disconnect()
 }

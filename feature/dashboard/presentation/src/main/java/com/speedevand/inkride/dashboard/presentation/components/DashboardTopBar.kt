@@ -34,7 +34,7 @@ fun DashboardTopBar(
     onClearRoute: () -> Unit,
     onRecordLap: () -> Unit,
     onOpenGoal: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val isActiveRide = status.isActiveRide
 
@@ -51,13 +51,13 @@ fun DashboardTopBar(
                 IconButton(onClick = onRecordLap) {
                     Icon(
                         imageVector = Icons.Filled.Timer,
-                        contentDescription = stringResource(R.string.dashboard_action_lap)
+                        contentDescription = stringResource(R.string.dashboard_action_lap),
                     )
                 }
                 IconButton(onClick = onOpenGoal) {
                     Icon(
                         imageVector = Icons.Filled.Flag,
-                        contentDescription = stringResource(R.string.dashboard_action_goal)
+                        contentDescription = stringResource(R.string.dashboard_action_goal),
                     )
                 }
             }
@@ -65,20 +65,20 @@ fun DashboardTopBar(
             // The glyph itself signals the action (route vs. clear).
             IconButton(
                 onClick = { if (hasRoute) onClearRoute() else onLoadRoute() },
-                modifier = Modifier.padding(end = DesignConstants.PADDING_TINY)
+                modifier = Modifier.padding(end = DesignConstants.PADDING_TINY),
             ) {
                 if (hasRoute) {
                     Icon(
                         imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.dashboard_route_clear)
+                        contentDescription = stringResource(R.string.dashboard_route_clear),
                     )
                 } else {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.AltRoute,
-                        contentDescription = stringResource(R.string.dashboard_route_load)
+                        contentDescription = stringResource(R.string.dashboard_route_load),
                     )
                 }
             }
-        }
+        },
     )
 }

@@ -12,7 +12,7 @@ import com.speedevand.inkride.core.domain.navigation.SettingsRoute
 
 fun NavGraphBuilder.dashboardGraph(
     navController: NavController,
-    trackingServiceClass: Class<*>
+    trackingServiceClass: Class<*>,
 ) {
     navigation<DashboardGraph>(startDestination = DashboardRoute) {
         composable<DashboardRoute> {
@@ -22,17 +22,19 @@ fun NavGraphBuilder.dashboardGraph(
                     navController.navigate(SettingsRoute)
                 },
                 onStartService = {
-                    val intent = Intent(context, trackingServiceClass).apply {
-                        action = "ACTION_START"
-                    }
+                    val intent =
+                        Intent(context, trackingServiceClass).apply {
+                            action = "ACTION_START"
+                        }
                     context.startService(intent)
                 },
                 onStopService = {
-                    val intent = Intent(context, trackingServiceClass).apply {
-                        action = "ACTION_STOP"
-                    }
+                    val intent =
+                        Intent(context, trackingServiceClass).apply {
+                            action = "ACTION_STOP"
+                        }
                     context.startService(intent)
-                }
+                },
             )
         }
     }

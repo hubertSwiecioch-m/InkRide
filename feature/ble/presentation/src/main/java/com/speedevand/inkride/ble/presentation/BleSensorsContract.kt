@@ -11,18 +11,31 @@ data class BleSensorsState(
     val pairedCadenceAddress: String? = null,
     // Non-null while a scan is running; identifies which sensor kind is scanned.
     val scanningType: BleSensorType? = null,
-    val discovered: List<BleDevice> = emptyList()
+    val discovered: List<BleDevice> = emptyList(),
 )
 
 sealed interface BleSensorsAction {
-    data class OnScanClick(val type: BleSensorType) : BleSensorsAction
+    data class OnScanClick(
+        val type: BleSensorType,
+    ) : BleSensorsAction
+
     data object OnStopScanClick : BleSensorsAction
-    data class OnDeviceClick(val device: BleDevice) : BleSensorsAction
-    data class OnForgetClick(val type: BleSensorType) : BleSensorsAction
+
+    data class OnDeviceClick(
+        val device: BleDevice,
+    ) : BleSensorsAction
+
+    data class OnForgetClick(
+        val type: BleSensorType,
+    ) : BleSensorsAction
+
     data object OnBackClick : BleSensorsAction
 }
 
 sealed interface BleSensorsEvent {
     data object NavigateBack : BleSensorsEvent
-    data class ShowError(val message: UiText) : BleSensorsEvent
+
+    data class ShowError(
+        val message: UiText,
+    ) : BleSensorsEvent
 }

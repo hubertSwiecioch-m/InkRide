@@ -14,13 +14,16 @@ import java.util.TimeZone
  * required by the GPX schema and by importers like Strava/Komoot/OsmAnd.
  */
 object GpxBuilder {
-
     private const val GPX_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'Z'"
 
-    fun build(ride: RideRecord, points: List<RideTrackPoint>): String {
-        val timeFormat = SimpleDateFormat(GPX_TIME_FORMAT, Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }
+    fun build(
+        ride: RideRecord,
+        points: List<RideTrackPoint>,
+    ): String {
+        val timeFormat =
+            SimpleDateFormat(GPX_TIME_FORMAT, Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
         val startTime = timeFormat.format(Date(ride.startTimestamp))
 
         return buildString {

@@ -12,7 +12,7 @@ enum class GpxParseError : Error {
     EMPTY,
 
     /** The bytes were not well-formed GPX/XML. */
-    MALFORMED
+    MALFORMED,
 }
 
 /**
@@ -25,20 +25,22 @@ enum class GpxParseError : Error {
  * named `<rtept>`, matching how routing tools emit turn-by-turn GPX.
  */
 object GpxRouteParser {
-
     fun parse(xml: String): Result<PlannedRoute, GpxParseError> {
-        val doc = try {
-            val factory = DocumentBuilderFactory.newInstance().apply {
-                isNamespaceAware = false
-                // Harden against XXE — these files come from arbitrary storage.
-                runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
-                isExpandEntityReferences = false
+        val doc =
+            try {
+                val factory =
+                    DocumentBuilderFactory.newInstance().apply {
+                        isNamespaceAware = false
+                        // Harden against XXE — these files come from arbitrary storage.
+                        runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
+                        isExpandEntityReferences = false
+                    }
+                factory
+                    .newDocumentBuilder()
+                    .parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+            } catch (e: Exception) {
+                return Result.Error(GpxParseError.MALFORMED)
             }
-            factory.newDocumentBuilder()
-                .parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
-        } catch (e: Exception) {
-            return Result.Error(GpxParseError.MALFORMED)
-        }
 
         val trackPoints = doc.elements("trkpt").mapNotNull { it.toRoutePoint() }
         val rtePtElements = doc.elements("rtept")
@@ -47,21 +49,22 @@ object GpxRouteParser {
         val points = if (trackPoints.isNotEmpty()) trackPoints else routePoints
         if (points.isEmpty()) return Result.Error(GpxParseError.EMPTY)
 
-        val waypoints = buildList {
-            doc.elements("wpt").forEach { el -> el.toWaypoint()?.let { add(it) } }
-            // Named route points double as turn markers in turn-by-turn GPX.
-            rtePtElements.forEach { el ->
-                val name = el.childText("name")
-                if (!name.isNullOrBlank()) el.toWaypoint()?.let { add(it) }
+        val waypoints =
+            buildList {
+                doc.elements("wpt").forEach { el -> el.toWaypoint()?.let { add(it) } }
+                // Named route points double as turn markers in turn-by-turn GPX.
+                rtePtElements.forEach { el ->
+                    val name = el.childText("name")
+                    if (!name.isNullOrBlank()) el.toWaypoint()?.let { add(it) }
+                }
             }
-        }
 
         return Result.Success(
             PlannedRoute(
                 name = doc.routeName(),
                 points = points,
-                waypoints = waypoints
-            )
+                waypoints = waypoints,
+            ),
         )
     }
 
@@ -77,8 +80,6 @@ object GpxRouteParser {
         return RouteWaypoint(lat, lon, childText("name")?.takeIf { it.isNotBlank() })
     }
 
-    // ── DOM helpers ─────────────────────────────────────────────────────────
-
     private fun org.w3c.dom.Document.elements(tag: String): List<Element> {
         val nodes = getElementsByTagName(tag)
         return (0 until nodes.length).mapNotNull { nodes.item(it) as? Element }
@@ -87,9 +88,10 @@ object GpxRouteParser {
     /** Route name from the `<trk>`, `<rte>`, or `<metadata>` block (not a waypoint). */
     private fun org.w3c.dom.Document.routeName(): String? {
         for (parent in listOf("trk", "rte", "metadata")) {
-            val name = elements(parent).firstNotNullOfOrNull { el ->
-                el.childText("name")?.takeIf { it.isNotBlank() }
-            }
+            val name =
+                elements(parent).firstNotNullOfOrNull { el ->
+                    el.childText("name")?.takeIf { it.isNotBlank() }
+                }
             if (name != null) return name
         }
         return null

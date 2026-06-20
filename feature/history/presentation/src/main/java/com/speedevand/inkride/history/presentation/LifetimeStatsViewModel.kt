@@ -13,9 +13,8 @@ import kotlinx.coroutines.launch
 
 class LifetimeStatsViewModel(
     private val lifetimeStatsRepository: LifetimeStatsRepository,
-    private val userSettingsRepository: UserSettingsRepository
+    private val userSettingsRepository: UserSettingsRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(LifetimeStatsState())
     val state = _state.asStateFlow()
 
@@ -26,7 +25,7 @@ class LifetimeStatsViewModel(
         viewModelScope.launch {
             combine(
                 lifetimeStatsRepository.observeLifetimeStats(),
-                userSettingsRepository.observeSettings()
+                userSettingsRepository.observeSettings(),
             ) { stats, settings ->
                 stats.toUi(settings.units)
             }.collect { ui ->
@@ -37,8 +36,10 @@ class LifetimeStatsViewModel(
 
     fun onAction(action: LifetimeStatsAction) {
         when (action) {
-            LifetimeStatsAction.OnBackClick -> viewModelScope.launch {
-                _events.send(LifetimeStatsEvent.NavigateBack)
+            LifetimeStatsAction.OnBackClick -> {
+                viewModelScope.launch {
+                    _events.send(LifetimeStatsEvent.NavigateBack)
+                }
             }
         }
     }

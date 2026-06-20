@@ -19,19 +19,19 @@ fun NavGraphBuilder.historyGraph(navController: NavController) {
                 },
                 onNavigateToLifetimeStats = {
                     navController.navigate(LifetimeStatsRoute)
-                }
+                },
             )
         }
         composable<RideDetailRoute> { backStackEntry ->
             val route: RideDetailRoute = backStackEntry.toRoute()
             RideDetailRoot(
                 rideId = route.rideId,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable<LifetimeStatsRoute> {
             LifetimeStatsRoot(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
             )
         }
     }

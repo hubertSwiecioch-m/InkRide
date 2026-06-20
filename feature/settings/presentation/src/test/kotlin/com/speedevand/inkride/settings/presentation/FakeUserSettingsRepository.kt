@@ -9,21 +9,20 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeUserSettingsRepository : UserSettingsRepository {
-
-    private val _settings = MutableStateFlow(UserSettings(weightKg = 75, age = 30))
+    private val settingsFlow = MutableStateFlow(UserSettings(weightKg = 75, age = 30))
     var lastSaved: UserSettings? = null
         private set
     var saveResult: EmptyResult<DataError.Local> = Result.Success(Unit)
 
-    override fun observeSettings(): Flow<UserSettings> = _settings
+    override fun observeSettings(): Flow<UserSettings> = settingsFlow
 
     override suspend fun save(settings: UserSettings): EmptyResult<DataError.Local> {
         lastSaved = settings
-        _settings.value = settings
+        settingsFlow.value = settings
         return saveResult
     }
 
     fun emitSettings(settings: UserSettings) {
-        _settings.value = settings
+        settingsFlow.value = settings
     }
 }

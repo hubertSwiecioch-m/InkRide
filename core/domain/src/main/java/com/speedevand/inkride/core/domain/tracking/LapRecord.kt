@@ -10,5 +10,5 @@ data class LapRecord(
     val distanceKm: Double,
     val movingTimeSeconds: Long,
     val averageSpeedKmh: Double,
-    val elevationGainM: Double
+    val elevationGainM: Double,
 )

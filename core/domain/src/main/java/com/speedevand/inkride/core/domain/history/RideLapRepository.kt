@@ -11,6 +11,10 @@ import com.speedevand.inkride.core.domain.tracking.LapRecord
  * via a foreign key with cascade delete, so removing a ride removes its laps.
  */
 interface RideLapRepository {
-    suspend fun saveLaps(rideId: Long, laps: List<LapRecord>): EmptyResult<DataError.Local>
+    suspend fun saveLaps(
+        rideId: Long,
+        laps: List<LapRecord>,
+    ): EmptyResult<DataError.Local>
+
     suspend fun getLaps(rideId: Long): Result<List<LapRecord>, DataError.Local>
 }

@@ -14,5 +14,5 @@ enum class WeatherTrend {
     RISING,
     FALLING,
     STABLE,
-    UNKNOWN
+    UNKNOWN,
 }

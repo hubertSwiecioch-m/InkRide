@@ -10,40 +10,42 @@ import com.speedevand.inkride.core.domain.settings.UserSettings
 import org.junit.jupiter.api.Test
 
 class PowerEstimatorTest {
-
     private val estimator = PowerEstimator()
     private val defaultSettings = UserSettings(weightKg = 75, age = 30, bikeWeightKg = 10.0, bikeType = BikeType.ROAD)
 
     @Test
     fun `zero power at very low speed`() {
-        val watts = estimator.estimateWatts(
-            speedMps = 0.05,
-            accelerationMps2 = 0.0,
-            gradePercent = 0.0,
-            userSettings = defaultSettings
-        )
+        val watts =
+            estimator.estimateWatts(
+                speedMps = 0.05,
+                accelerationMps2 = 0.0,
+                gradePercent = 0.0,
+                userSettings = defaultSettings,
+            )
         assertThat(watts).isZero()
     }
 
     @Test
     fun `zero power at exactly zero speed`() {
-        val watts = estimator.estimateWatts(
-            speedMps = 0.0,
-            accelerationMps2 = 0.0,
-            gradePercent = 0.0,
-            userSettings = defaultSettings
-        )
+        val watts =
+            estimator.estimateWatts(
+                speedMps = 0.0,
+                accelerationMps2 = 0.0,
+                gradePercent = 0.0,
+                userSettings = defaultSettings,
+            )
         assertThat(watts).isZero()
     }
 
     @Test
     fun `positive power at riding speed`() {
-        val watts = estimator.estimateWatts(
-            speedMps = 8.0, // ~29 km/h
-            accelerationMps2 = 0.0,
-            gradePercent = 0.0,
-            userSettings = defaultSettings
-        )
+        val watts =
+            estimator.estimateWatts(
+                speedMps = 8.0, // ~29 km/h
+                accelerationMps2 = 0.0,
+                gradePercent = 0.0,
+                userSettings = defaultSettings,
+            )
         assertThat(watts).isGreaterThan(0)
     }
 
@@ -91,12 +93,13 @@ class PowerEstimatorTest {
 
     @Test
     fun `power never negative even on steep downhill with deceleration`() {
-        val watts = estimator.estimateWatts(
-            speedMps = 5.0,
-            accelerationMps2 = -2.0,
-            gradePercent = -20.0,
-            userSettings = defaultSettings
-        )
+        val watts =
+            estimator.estimateWatts(
+                speedMps = 5.0,
+                accelerationMps2 = -2.0,
+                gradePercent = -20.0,
+                userSettings = defaultSettings,
+            )
         // coerceAtLeast(0.0) ensures non-negative
         assertThat(watts).isEqualTo(0)
     }

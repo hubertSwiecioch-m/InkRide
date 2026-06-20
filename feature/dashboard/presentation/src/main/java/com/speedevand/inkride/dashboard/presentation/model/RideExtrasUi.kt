@@ -1,12 +1,12 @@
 package com.speedevand.inkride.dashboard.presentation.model
 
-import com.speedevand.inkride.core.toClockString
 import com.speedevand.inkride.core.domain.settings.MeasurementUnits
 import com.speedevand.inkride.core.domain.tracking.LapRecord
 import com.speedevand.inkride.core.domain.tracking.PlannedRoute
 import com.speedevand.inkride.core.domain.tracking.RideGoal
 import com.speedevand.inkride.core.domain.tracking.RideMetrics
 import com.speedevand.inkride.core.domain.tracking.RouteProgress
+import com.speedevand.inkride.core.toClockString
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.KM_TO_MI_FACTOR
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.M_TO_FT_FACTOR
 import java.util.Locale
@@ -19,7 +19,7 @@ data class LapSummaryUi(
     val distance: String,
     val time: String,
     val averageSpeed: String,
-    val elevationGain: String
+    val elevationGain: String,
 )
 
 /**
@@ -30,7 +30,7 @@ data class LapSummaryUi(
 data class GoalProgressUi(
     val remainingValue: String,
     val unitLabel: String,
-    val reached: Boolean
+    val reached: Boolean,
 )
 
 fun LapRecord.toSummaryUi(units: MeasurementUnits): LapSummaryUi {
@@ -45,11 +45,15 @@ fun LapRecord.toSummaryUi(units: MeasurementUnits): LapSummaryUi {
         distance = "${(distanceKm * distanceFactor).format(2)} $distanceUnit",
         time = movingTimeSeconds.toClockString(),
         averageSpeed = "${(averageSpeedKmh * distanceFactor).format(1)} $speedUnit",
-        elevationGain = "${(elevationGainM * altitudeFactor).format(0)} $altitudeUnit"
+        elevationGain = "${(elevationGainM * altitudeFactor).format(0)} $altitudeUnit",
     )
 }
 
-fun goalProgressUi(goal: RideGoal, metrics: RideMetrics, units: MeasurementUnits): GoalProgressUi {
+fun goalProgressUi(
+    goal: RideGoal,
+    metrics: RideMetrics,
+    units: MeasurementUnits,
+): GoalProgressUi {
     val imperial = units == MeasurementUnits.IMPERIAL
     return when (goal) {
         is RideGoal.Distance -> {
@@ -58,16 +62,17 @@ fun goalProgressUi(goal: RideGoal, metrics: RideMetrics, units: MeasurementUnits
             GoalProgressUi(
                 remainingValue = (remainingKm * factor).format(2),
                 unitLabel = if (imperial) "mi" else "km",
-                reached = metrics.distanceKm >= goal.targetKm
+                reached = metrics.distanceKm >= goal.targetKm,
             )
         }
+
         is RideGoal.Duration -> {
             val remainingSec = (goal.targetSeconds - metrics.elapsedTimeSeconds).coerceAtLeast(0L)
             val remainingMin = ceil(remainingSec / 60.0).toInt()
             GoalProgressUi(
                 remainingValue = remainingMin.toString(),
                 unitLabel = "min",
-                reached = metrics.elapsedTimeSeconds >= goal.targetSeconds
+                reached = metrics.elapsedTimeSeconds >= goal.targetSeconds,
             )
         }
     }
@@ -83,13 +88,13 @@ data class RouteProgressUi(
     val nextTurn: String?,
     val nextTurnName: String?,
     val offRoute: Boolean,
-    val offRouteDistance: String
+    val offRouteDistance: String,
 )
 
 fun routeProgressUi(
     route: PlannedRoute,
     progress: RouteProgress?,
-    units: MeasurementUnits
+    units: MeasurementUnits,
 ): RouteProgressUi {
     val imperial = units == MeasurementUnits.IMPERIAL
     return RouteProgressUi(
@@ -97,12 +102,15 @@ fun routeProgressUi(
         nextTurn = progress?.distanceToNextWaypointM?.let { formatRouteDistance(it, imperial) },
         nextTurnName = progress?.nextWaypointName,
         offRoute = progress?.isOffRoute == true,
-        offRouteDistance = progress?.distanceToRouteM?.let { formatRouteDistance(it, imperial) }.orEmpty()
+        offRouteDistance = progress?.distanceToRouteM?.let { formatRouteDistance(it, imperial) }.orEmpty(),
     )
 }
 
 /** Short distance: metres/feet under ~1 km, otherwise km/miles to 2 decimals. */
-private fun formatRouteDistance(meters: Double, imperial: Boolean): String =
+private fun formatRouteDistance(
+    meters: Double,
+    imperial: Boolean,
+): String =
     if (imperial) {
         val feet = meters * M_TO_FT_FACTOR
         if (feet < 1000) "${feet.roundToInt()} ft" else "${(meters * KM_TO_MI_FACTOR / 1000.0).format(2)} mi"
@@ -110,5 +118,4 @@ private fun formatRouteDistance(meters: Double, imperial: Boolean): String =
         if (meters < 1000) "${meters.roundToInt()} m" else "${(meters / 1000.0).format(2)} km"
     }
 
-private fun Double.format(decimals: Int): String =
-    String.format(Locale.US, "%1$.${decimals}f", this)
+private fun Double.format(decimals: Int): String = String.format(Locale.US, "%1$.${decimals}f", this)

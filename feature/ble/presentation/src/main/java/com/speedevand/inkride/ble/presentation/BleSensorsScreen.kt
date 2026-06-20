@@ -45,31 +45,36 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun BleSensorsRoot(
     onNavigateBack: () -> Unit,
-    viewModel: BleSensorsViewModel = koinViewModel()
+    viewModel: BleSensorsViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { }
+    val launcher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { }
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             launcher.launch(
                 arrayOf(
                     Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT
-                )
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                ),
             )
         }
     }
 
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            BleSensorsEvent.NavigateBack -> onNavigateBack()
-            is BleSensorsEvent.ShowError ->
+            BleSensorsEvent.NavigateBack -> {
+                onNavigateBack()
+            }
+
+            is BleSensorsEvent.ShowError -> {
                 Toast.makeText(context, event.message.asString(context), Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -80,7 +85,7 @@ fun BleSensorsRoot(
 @Composable
 fun BleSensorsScreen(
     state: BleSensorsState,
-    onAction: (BleSensorsAction) -> Unit
+    onAction: (BleSensorsAction) -> Unit,
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -90,34 +95,35 @@ fun BleSensorsScreen(
                     TextMMD(
                         text = stringResource(R.string.ble_title),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = { onAction(BleSensorsAction.OnBackClick) }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.ble_cd_back)
+                            contentDescription = stringResource(R.string.ble_cd_back),
                         )
                     }
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SensorSection(
                 title = stringResource(R.string.ble_section_heart_rate),
                 type = BleSensorType.HEART_RATE,
                 pairedAddress = state.pairedHrmAddress,
                 state = state,
-                onAction = onAction
+                onAction = onAction,
             )
             HorizontalDividerMMD()
             SensorSection(
@@ -125,7 +131,7 @@ fun BleSensorsScreen(
                 type = BleSensorType.CADENCE,
                 pairedAddress = state.pairedCadenceAddress,
                 state = state,
-                onAction = onAction
+                onAction = onAction,
             )
         }
     }
@@ -137,7 +143,7 @@ private fun SensorSection(
     type: BleSensorType,
     pairedAddress: String?,
     state: BleSensorsState,
-    onAction: (BleSensorsAction) -> Unit
+    onAction: (BleSensorsAction) -> Unit,
 ) {
     val isScanning = state.scanningType == type
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -145,18 +151,18 @@ private fun SensorSection(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
         )
 
         if (pairedAddress != null) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextMMD(
                     text = stringResource(R.string.ble_paired_to, pairedAddress),
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 OutlinedButtonMMD(onClick = { onAction(BleSensorsAction.OnForgetClick(type)) }) {
                     TextMMD(text = stringResource(R.string.ble_action_forget))
@@ -166,14 +172,14 @@ private fun SensorSection(
             TextMMD(
                 text = stringResource(R.string.ble_none_paired),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.outline,
             )
         }
 
         if (isScanning) {
             ButtonMMD(
                 onClick = { onAction(BleSensorsAction.OnStopScanClick) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 TextMMD(text = stringResource(R.string.ble_action_stop_scan))
             }
@@ -181,7 +187,7 @@ private fun SensorSection(
                 TextMMD(
                     text = stringResource(R.string.ble_scanning),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.outline
+                    color = MaterialTheme.colorScheme.outline,
                 )
             } else {
                 state.discovered.forEach { device ->
@@ -191,7 +197,7 @@ private fun SensorSection(
         } else {
             OutlinedButtonMMD(
                 onClick = { onAction(BleSensorsAction.OnScanClick(type)) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 TextMMD(text = stringResource(R.string.ble_action_scan))
             }
@@ -200,24 +206,28 @@ private fun SensorSection(
 }
 
 @Composable
-private fun DiscoveredDeviceRow(device: BleDevice, onClick: () -> Unit) {
+private fun DiscoveredDeviceRow(
+    device: BleDevice,
+    onClick: () -> Unit,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
             TextMMD(
                 text = device.name ?: stringResource(R.string.ble_unknown_device),
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
             TextMMD(
                 text = device.address,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.outline,
             )
         }
     }
@@ -228,14 +238,16 @@ private fun DiscoveredDeviceRow(device: BleDevice, onClick: () -> Unit) {
 private fun BleSensorsScreenPreview() {
     InkRideTheme {
         BleSensorsScreen(
-            state = BleSensorsState(
-                pairedHrmAddress = "C4:2F:90:11:22:33",
-                scanningType = BleSensorType.CADENCE,
-                discovered = listOf(
-                    BleDevice("AA:BB:CC:DD:EE:FF", "Wahoo CADENCE", BleSensorType.CADENCE)
-                )
-            ),
-            onAction = {}
+            state =
+                BleSensorsState(
+                    pairedHrmAddress = "C4:2F:90:11:22:33",
+                    scanningType = BleSensorType.CADENCE,
+                    discovered =
+                        listOf(
+                            BleDevice("AA:BB:CC:DD:EE:FF", "Wahoo CADENCE", BleSensorType.CADENCE),
+                        ),
+                ),
+            onAction = {},
         )
     }
 }

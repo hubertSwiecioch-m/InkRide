@@ -21,7 +21,9 @@ data object SettingsRoute
 data object RideHistoryRoute
 
 @Serializable
-data class RideDetailRoute(val rideId: Long)
+data class RideDetailRoute(
+    val rideId: Long,
+)
 
 @Serializable
 data object LifetimeStatsRoute

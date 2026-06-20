@@ -6,9 +6,6 @@ import assertk.assertions.isInstanceOf
 import org.junit.jupiter.api.Test
 
 class ResultTest {
-
-    // ── map ────────────────────────────────────────────────────────────────
-
     @Test
     fun `map transforms success data`() {
         val result: Result<Int, DataError.Local> = Result.Success(42)
@@ -25,8 +22,6 @@ class ResultTest {
         assertThat(mapped).isInstanceOf<Result.Error<DataError.Local>>()
         assertThat((mapped as Result.Error).error).isEqualTo(error)
     }
-
-    // ── onSuccess ──────────────────────────────────────────────────────────
 
     @Test
     fun `onSuccess executes action on success`() {
@@ -59,8 +54,6 @@ class ResultTest {
         assertThat(returned).isInstanceOf<Result.Success<String>>()
         assertThat((returned as Result.Success).data).isEqualTo("hello")
     }
-
-    // ── onFailure ──────────────────────────────────────────────────────────
 
     @Test
     fun `onFailure executes action on error`() {
@@ -96,8 +89,6 @@ class ResultTest {
         assertThat(returned).isInstanceOf<Result.Error<DataError.Local>>()
         assertThat((returned as Result.Error).error).isEqualTo(error)
     }
-
-    // ── asEmptyResult ──────────────────────────────────────────────────────
 
     @Test
     fun `asEmptyResult converts success to unit result`() {

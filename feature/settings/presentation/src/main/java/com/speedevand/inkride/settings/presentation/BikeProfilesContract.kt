@@ -10,24 +10,48 @@ data class BikeProfileUi(
     val name: String,
     val weight: String,
     val type: BikeType,
-    val isActive: Boolean
+    val isActive: Boolean,
 )
 
 sealed interface BikeProfilesAction {
-    data class OnNameChange(val value: String) : BikeProfilesAction
-    data class OnWeightChange(val value: String) : BikeProfilesAction
-    data class OnTypeChange(val type: BikeType) : BikeProfilesAction
+    data class OnNameChange(
+        val value: String,
+    ) : BikeProfilesAction
+
+    data class OnWeightChange(
+        val value: String,
+    ) : BikeProfilesAction
+
+    data class OnTypeChange(
+        val type: BikeType,
+    ) : BikeProfilesAction
+
     data object OnSaveDraft : BikeProfilesAction
+
     data object OnCancelDraft : BikeProfilesAction
+
     data object OnAddNew : BikeProfilesAction
-    data class OnEdit(val id: Long) : BikeProfilesAction
-    data class OnDelete(val id: Long) : BikeProfilesAction
-    data class OnSetActive(val id: Long) : BikeProfilesAction
+
+    data class OnEdit(
+        val id: Long,
+    ) : BikeProfilesAction
+
+    data class OnDelete(
+        val id: Long,
+    ) : BikeProfilesAction
+
+    data class OnSetActive(
+        val id: Long,
+    ) : BikeProfilesAction
+
     data object OnBackClick : BikeProfilesAction
 }
 
 sealed interface BikeProfilesEvent {
-    data class ShowError(val message: UiText) : BikeProfilesEvent
+    data class ShowError(
+        val message: UiText,
+    ) : BikeProfilesEvent
+
     data object OnBack : BikeProfilesEvent
 }
 
@@ -42,7 +66,7 @@ data class BikeProfilesState(
     val draftWeight: String = "",
     val draftType: BikeType = BikeType.ROAD,
     val draftNameError: Boolean = false,
-    val draftWeightError: Boolean = false
+    val draftWeightError: Boolean = false,
 ) {
     val weightUnit: String get() = if (units == MeasurementUnits.IMPERIAL) "lbs" else "kg"
 }

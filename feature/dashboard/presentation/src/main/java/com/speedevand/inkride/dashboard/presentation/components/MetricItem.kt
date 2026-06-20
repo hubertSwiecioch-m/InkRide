@@ -16,14 +16,12 @@ import com.mudita.mmd.components.text.TextMMD
 import com.speedevand.inkride.core.presentation.DesignConstants
 
 @Composable
-fun MetricRow(
-    content: @Composable RowScope.() -> Unit
-) {
+fun MetricRow(content: @Composable RowScope.() -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_LARGE),
         verticalAlignment = Alignment.Top,
-        content = content
+        content = content,
     )
 }
 
@@ -32,25 +30,25 @@ fun MetricItem(
     label: String,
     value: String,
     unit: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_TINY / 2)
+        verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_TINY / 2),
     ) {
         TextMMD(
             text = label.uppercase(),
             style = DashboardTextStyles.caption,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.outline,
         )
         Row(
             verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
         ) {
             TextMMD(
                 text = value,
-                style = DashboardTextStyles.metricValue
+                style = DashboardTextStyles.metricValue,
             )
             if (unit.isNotEmpty()) {
                 Spacer(modifier = Modifier.width(DesignConstants.PADDING_TINY / 2))
@@ -58,7 +56,7 @@ fun MetricItem(
                     text = unit,
                     style = DashboardTextStyles.unit,
                     color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.padding(bottom = DesignConstants.PADDING_TINY)
+                    modifier = Modifier.padding(bottom = DesignConstants.PADDING_TINY),
                 )
             }
         }

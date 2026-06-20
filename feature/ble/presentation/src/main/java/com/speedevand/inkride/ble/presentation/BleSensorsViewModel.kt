@@ -19,9 +19,8 @@ import kotlinx.coroutines.launch
 
 class BleSensorsViewModel(
     private val scanner: BleScanner,
-    private val userSettingsRepository: UserSettingsRepository
+    private val userSettingsRepository: UserSettingsRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(BleSensorsState())
     val state = _state.asStateFlow()
 
@@ -36,7 +35,7 @@ class BleSensorsViewModel(
                 _state.update {
                     it.copy(
                         pairedHrmAddress = settings.pairedHrmAddress,
-                        pairedCadenceAddress = settings.pairedCadenceAddress
+                        pairedCadenceAddress = settings.pairedCadenceAddress,
                     )
                 }
             }
@@ -45,32 +44,50 @@ class BleSensorsViewModel(
 
     fun onAction(action: BleSensorsAction) {
         when (action) {
-            is BleSensorsAction.OnScanClick -> startScan(action.type)
-            BleSensorsAction.OnStopScanClick -> stopScan()
-            is BleSensorsAction.OnDeviceClick -> pair(action.device.type, action.device.address)
-            is BleSensorsAction.OnForgetClick -> pair(action.type, address = null)
-            BleSensorsAction.OnBackClick -> viewModelScope.launch {
-                _events.send(BleSensorsEvent.NavigateBack)
+            is BleSensorsAction.OnScanClick -> {
+                startScan(action.type)
+            }
+
+            BleSensorsAction.OnStopScanClick -> {
+                stopScan()
+            }
+
+            is BleSensorsAction.OnDeviceClick -> {
+                pair(action.device.type, action.device.address)
+            }
+
+            is BleSensorsAction.OnForgetClick -> {
+                pair(action.type, address = null)
+            }
+
+            BleSensorsAction.OnBackClick -> {
+                viewModelScope.launch {
+                    _events.send(BleSensorsEvent.NavigateBack)
+                }
             }
         }
     }
 
     private fun startScan(type: BleSensorType) {
-        scanner.available()
+        scanner
+            .available()
             .onFailure { error ->
                 viewModelScope.launch { _events.send(BleSensorsEvent.ShowError(error.toUiText())) }
-            }
-            .onSuccess {
+            }.onSuccess {
                 scanJob?.cancel()
                 _state.update { it.copy(scanningType = type, discovered = emptyList()) }
-                scanJob = viewModelScope.launch {
-                    scanner.scan(type).collect { device ->
-                        _state.update { current ->
-                            if (current.discovered.any { it.address == device.address }) current
-                            else current.copy(discovered = current.discovered + device)
+                scanJob =
+                    viewModelScope.launch {
+                        scanner.scan(type).collect { device ->
+                            _state.update { current ->
+                                if (current.discovered.any { it.address == device.address }) {
+                                    current
+                                } else {
+                                    current.copy(discovered = current.discovered + device)
+                                }
+                            }
                         }
                     }
-                }
             }
     }
 
@@ -80,14 +97,18 @@ class BleSensorsViewModel(
         _state.update { it.copy(scanningType = null, discovered = emptyList()) }
     }
 
-    private fun pair(type: BleSensorType, address: String?) {
+    private fun pair(
+        type: BleSensorType,
+        address: String?,
+    ) {
         stopScan()
         viewModelScope.launch {
             val settings = userSettingsRepository.observeSettings().first()
-            val updated = when (type) {
-                BleSensorType.HEART_RATE -> settings.copy(pairedHrmAddress = address)
-                BleSensorType.CADENCE -> settings.copy(pairedCadenceAddress = address)
-            }
+            val updated =
+                when (type) {
+                    BleSensorType.HEART_RATE -> settings.copy(pairedHrmAddress = address)
+                    BleSensorType.CADENCE -> settings.copy(pairedCadenceAddress = address)
+                }
             userSettingsRepository.save(updated).onFailure { error ->
                 _events.send(BleSensorsEvent.ShowError(error.toUiText()))
             }

@@ -10,5 +10,5 @@ data class BikeProfile(
     val id: Long = 0L,
     val name: String,
     val weightKg: Double,
-    val type: BikeType
+    val type: BikeType,
 )

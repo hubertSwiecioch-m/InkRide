@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.TextUnit
  * would silently fall back to the default (non-Lato) font.
  */
 object DashboardTextStyles {
-
     /** Small uppercase caption above a value (e.g. "SPEED", "DISTANCE"). */
     val caption: TextStyle
         @Composable @ReadOnlyComposable
@@ -41,6 +40,6 @@ object DashboardTextStyles {
         MaterialTheme.typography.headlineLarge.copy(
             fontSize = fontSize,
             lineHeight = fontSize,
-            fontWeight = FontWeight.Black
+            fontWeight = FontWeight.Black,
         )
 }

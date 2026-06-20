@@ -12,10 +12,10 @@ import androidx.room.PrimaryKey
             entity = RideHistoryEntity::class,
             parentColumns = ["id"],
             childColumns = ["rideId"],
-            onDelete = ForeignKey.CASCADE
-        )
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
-    indices = [Index("rideId")]
+    indices = [Index("rideId")],
 )
 data class RideTrackPointEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -24,5 +24,5 @@ data class RideTrackPointEntity(
     val latitude: Double,
     val longitude: Double,
     val altitudeM: Double?,
-    val accuracyM: Float?
+    val accuracyM: Float?,
 )

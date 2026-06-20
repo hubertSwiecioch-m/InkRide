@@ -9,7 +9,6 @@ import com.speedevand.inkride.core.domain.settings.UserSettings
 import org.junit.jupiter.api.Test
 
 class CaloriesEstimatorTest {
-
     private val estimator = CaloriesEstimator()
 
     @Test
@@ -42,8 +41,6 @@ class CaloriesEstimatorTest {
         val kcal = estimator.estimateKcal(speedKmh = 0.0, intervalMs = 60_000L, userSettings = settings)
         assertThat(kcal).isZero()
     }
-
-    // ── MET interpolation: values smoothly transition between brackets ──────
 
     @Test
     fun `MET is 4_0 at exactly 16 kmh bracket`() {
@@ -95,8 +92,6 @@ class CaloriesEstimatorTest {
         assertThat(ratio).isLessThan(1.1)
     }
 
-    // ── Age factor brackets ────────────────────────────────────────────────
-
     @Test
     fun `age factor is 1_0 for age under 30`() {
         val settings = UserSettings(weightKg = 70, age = 20)
@@ -126,8 +121,6 @@ class CaloriesEstimatorTest {
         assertThat(kcal).isEqualTo(4.0 * 3.5 * 70.0 / 200.0 * 0.9)
     }
 
-    // ── Other ──────────────────────────────────────────────────────────────
-
     @Test
     fun `calories increase linearly with interval duration`() {
         val settings = UserSettings(weightKg = 70, age = 20)
@@ -148,8 +141,6 @@ class CaloriesEstimatorTest {
 
         assertThat(heavyKcal).isGreaterThan(lightKcal)
     }
-
-    // ── Grade awareness ────────────────────────────────────────────────────
 
     @Test
     fun `uphill burns more calories than flat ground`() {
