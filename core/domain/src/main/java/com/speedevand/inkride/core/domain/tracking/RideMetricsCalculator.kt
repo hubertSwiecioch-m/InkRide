@@ -298,13 +298,13 @@ class RideMetricsCalculator(
 
             val isMovingBasedOnGps = speedKmhFromGps >= autoPauseThresholdKmh
             val isSignificantMovement = effectiveSegmentDistanceM > (combinedAccuracyM * 0.5)
+            val isMovementSignal = isMovingBasedOnGps || isSignificantMovement
 
             // When the rider appears stationary for several consecutive fixes,
             // require 2 consecutive "moving" confirmations before accumulating
             // distance. This prevents single-fix GPS wobble from adding false
             // distance when the device is truly stationary.
-            val isAppearsStationary = !isMovingBasedOnGps && !isSignificantMovement
-            if (isAppearsStationary) {
+            if (!isMovementSignal) {
                 consecutiveStationarySamples++
                 if (consecutiveStationarySamples >= 5) {
                     movingConfirmationsNeeded = 2
@@ -316,6 +316,8 @@ class RideMetricsCalculator(
                 }
             }
 
+            val isMovementConfirmationPending = isMovementSignal && movingConfirmationsNeeded > 0
+
             val effectiveDistanceM =
                 when {
                     // Suppress all displacement until the GPS fix has converged.
@@ -323,8 +325,8 @@ class RideMetricsCalculator(
                         0.0
                     }
 
-                    isMovingBasedOnGps || isSignificantMovement -> {
-                        if (movingConfirmationsNeeded > 0) 0.0 else effectiveSegmentDistanceM
+                    isMovementSignal -> {
+                        if (isMovementConfirmationPending) 0.0 else effectiveSegmentDistanceM
                     }
 
                     else -> {
@@ -341,7 +343,20 @@ class RideMetricsCalculator(
                 }
 
             speedMps = speedMpsFromGps ?: speedMpsFromDistance
-            isActuallyMoving = isMovingBasedOnGps || isSignificantMovement
+            isActuallyMoving = isMovementSignal
+
+            // Below the movement threshold the rider is treated as stopped, so
+            // the live readout must be exactly 0. GPS Doppler reports a non-zero
+            // residual (typically 0.3–1.5 km/h) while standing still and keeps
+            // reporting a decaying value for a beat or two after braking to a
+            // halt; without this gate the speedometer would show a phantom crawl
+            // at a red light and that noise would also poison max speed. Because
+            // lastReportedSpeedMps is carried forward onto interleaved
+            // non-location samples, zeroing here also stops the phantom value
+            // from lingering on the display between GPS fixes.
+            if (!isActuallyMoving) {
+                speedMps = 0.0
+            }
 
             // During warm-up neither the Doppler speed nor the position delta is
             // trustworthy — hold the live readout at zero rather than flashing a
@@ -351,22 +366,40 @@ class RideMetricsCalculator(
                 isActuallyMoving = false
             }
 
-            // Interval credited to time-integrated metrics. Use the GPS-fix
-            // interval (not dtMs, which would only span the gap since the last
-            // — possibly barometer — sample), capped so a fix returning from a
-            // long dropout can't fabricate moving time/energy.
-            val integrationDtMs = locationDtMs.coerceAtMost(maxIntegrationGapMs)
+            // Energy (calories, power) is integrated over the GPS-fix interval
+            // but capped: a fix returning from a long GPS dropout must not
+            // fabricate energy for a period we have no movement data for. Use the
+            // GPS-fix interval (not dtMs, which would only span the gap since the
+            // last — possibly barometer — sample).
+            //
+            // Distance and moving time are deliberately NOT capped: the
+            // straight-line displacement is the best distance estimate across a
+            // gap, and moving time must stay consistent with it so the moving
+            // average (distance ÷ moving time) isn't skewed. Previously only the
+            // time was capped while the full distance was credited, which
+            // inflated the average speed after every GPS dropout.
+            val energyDtMs = locationDtMs.coerceAtMost(maxIntegrationGapMs)
 
             if (!isPaused) {
-                if (isActuallyMoving) {
-                    movingTimeMs += integrationDtMs
+                // Gated on isMovementConfirmationPending too (not just
+                // isActuallyMoving) to stay in lockstep with effectiveDistanceM
+                // above: while a fix is still inside the stationary-drift
+                // confirmation window, distance is deliberately withheld. Without
+                // this, moving time would accumulate this fix's interval anyway —
+                // crediting moving time with no matching distance and deflating
+                // average speed (distance ÷ moving time) by ~1 fix-interval on
+                // every resume from a stop. Speed display, elevation/grade, power
+                // and calories stay on plain isActuallyMoving — only the
+                // distance/time pairing needs the extra caution.
+                if (isActuallyMoving && !isMovementConfirmationPending) {
+                    movingTimeMs += locationDtMs
                 }
                 totalDistanceM += effectiveDistanceM
                 maxSpeedMps = max(maxSpeedMps, speedMps)
                 caloriesKcal +=
                     caloriesEstimator.estimateKcal(
                         speedKmh = speedMps * 3.6,
-                        intervalMs = integrationDtMs,
+                        intervalMs = energyDtMs,
                         userSettings = userSettings,
                         gradePercent = currentGrade,
                     )
@@ -389,8 +422,8 @@ class RideMetricsCalculator(
                         userSettings = userSettings,
                     )
                 if (isActuallyMoving) {
-                    powerWeightedSumWattMs += currentPowerWatts.toDouble() * integrationDtMs
-                    powerDurationMs += integrationDtMs
+                    powerWeightedSumWattMs += currentPowerWatts.toDouble() * energyDtMs
+                    powerDurationMs += energyDtMs
                 }
                 lastSpeedMps = speedMps
             } else {
@@ -446,6 +479,26 @@ class RideMetricsCalculator(
                         currentGrade = (dy / dx * 100.0).coerceIn(-35.0, 35.0)
                     }
                 }
+            } else if (isPaused || (isLocationSample && consecutiveStationarySamples >= 5)) {
+                // Confidently stopped (paused, or several consecutive location
+                // fixes confirm no movement): re-anchor the elevation baseline to
+                // the current altitude. While standing still the barometer keeps
+                // drifting with the weather (~8.4 m per hPa) and GPS altitude
+                // wanders; without re-anchoring, that drift would be miscounted as
+                // climb the moment riding resumes (e.g. a long café stop
+                // fabricating several metres of gain).
+                //
+                // Gating is deliberate on two counts:
+                //  • NOT on plain !isActuallyMoving — interleaved barometer/heading
+                //    samples also report isActuallyMoving = false, and re-anchoring
+                //    on those would wipe the baseline between GPS fixes and
+                //    undercount real climbs.
+                //  • Requiring a SUSTAINED stop (the same 5-fix threshold as the
+                //    stationary-drift protection) — a single Doppler-noise dip
+                //    below the movement threshold mid-climb must not re-anchor and
+                //    silently drop sub-threshold gain banked so far. Over the few
+                //    seconds before the streak builds, weather drift is negligible.
+                lastElevationGainAltitudeM = currentSmoothed
             }
         }
 
