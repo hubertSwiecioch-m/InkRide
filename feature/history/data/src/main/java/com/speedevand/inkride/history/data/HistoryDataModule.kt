@@ -8,9 +8,10 @@ import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
-val historyDataModule = module {
-    singleOf(::RoomRideHistoryRepository) { bind<RideHistoryRepository>() }
-    singleOf(::RoomRideTrackPointRepository) { bind<RideTrackPointRepository>() }
-    singleOf(::RoomRideLapRepository) { bind<RideLapRepository>() }
-    singleOf(::RoomLifetimeStatsRepository) { bind<LifetimeStatsRepository>() }
-}
+val historyDataModule =
+    module {
+        singleOf(::RoomRideHistoryRepository) { bind<RideHistoryRepository>() }
+        singleOf(::RoomRideTrackPointRepository) { bind<RideTrackPointRepository>() }
+        singleOf(::RoomRideLapRepository) { bind<RideLapRepository>() }
+        singleOf(::RoomLifetimeStatsRepository) { bind<LifetimeStatsRepository>() }
+    }

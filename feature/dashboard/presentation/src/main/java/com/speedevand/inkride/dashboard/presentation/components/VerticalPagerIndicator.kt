@@ -18,28 +18,29 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun VerticalPagerIndicator(
     pagerState: PagerState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         repeat(pagerState.pageCount) { iteration ->
             val isActive = pagerState.currentPage == iteration
             Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .then(
-                        if (isActive) {
-                            Modifier.background(MaterialTheme.colorScheme.primary)
-                        } else {
-                            Modifier
-                                .background(MaterialTheme.colorScheme.surface)
-                                .border(1.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                        }
-                    )
+                modifier =
+                    Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .then(
+                            if (isActive) {
+                                Modifier.background(MaterialTheme.colorScheme.primary)
+                            } else {
+                                Modifier
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .border(1.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                            },
+                        ),
             )
         }
     }

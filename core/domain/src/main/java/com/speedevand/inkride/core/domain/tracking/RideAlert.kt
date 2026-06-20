@@ -11,14 +11,22 @@ package com.speedevand.inkride.core.domain.tracking
  */
 sealed interface RideAlert {
     /** Live speed rose above [AlertConfig.maxSpeedKmh]. */
-    data class OverSpeed(val speedKmh: Double) : RideAlert
+    data class OverSpeed(
+        val speedKmh: Double,
+    ) : RideAlert
 
     /** Heart rate rose above the target zone's upper bound. */
-    data class HeartRateHigh(val bpm: Int) : RideAlert
+    data class HeartRateHigh(
+        val bpm: Int,
+    ) : RideAlert
 
     /** Heart rate dropped below the target zone's lower bound. */
-    data class HeartRateLow(val bpm: Int) : RideAlert
+    data class HeartRateLow(
+        val bpm: Int,
+    ) : RideAlert
 
     /** Rider strayed beyond the off-route threshold from the loaded route. */
-    data class OffRoute(val distanceM: Double) : RideAlert
+    data class OffRoute(
+        val distanceM: Double,
+    ) : RideAlert
 }

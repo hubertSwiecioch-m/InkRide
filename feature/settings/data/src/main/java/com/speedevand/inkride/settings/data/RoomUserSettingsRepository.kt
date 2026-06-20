@@ -17,57 +17,67 @@ import kotlinx.coroutines.flow.combine
 
 class RoomUserSettingsRepository(
     private val dao: UserSettingsDao,
-    private val bikeProfileDao: BikeProfileDao
+    private val bikeProfileDao: BikeProfileDao,
 ) : UserSettingsRepository {
-
     // The active bike profile (when set and still present) supplies the bike
     // weight/type the metric estimators use, so the stored flat columns act only
     // as the fallback when no profile is active. Resolving it here keeps
     // RideTracker and the estimators unaware of profiles.
     override fun observeSettings(): Flow<UserSettings> =
         combine(dao.observe(), bikeProfileDao.observeAll()) { entity, profiles ->
-        if (entity != null) {
-            val activeProfile = entity.activeBikeProfileId?.let { id -> profiles.firstOrNull { it.id == id } }
-            UserSettings(
-                weightKg = entity.weightKg,
-                age = entity.age,
-                bikeWeightKg = activeProfile?.weightKg ?: entity.bikeWeightKg,
-                bikeType = activeProfile?.type?.let { runCatching { BikeType.valueOf(it) }.getOrDefault(BikeType.ROAD) }
-                    ?: try { BikeType.valueOf(entity.bikeType) } catch(e: Exception) { BikeType.ROAD },
-                languageCode = entity.languageCode,
-                units = try { MeasurementUnits.valueOf(entity.units) } catch(e: Exception) { MeasurementUnits.METRIC },
-                showDistance = entity.showDistance,
-                showMovingTime = entity.showMovingTime,
-                showAverageSpeed = entity.showAverageSpeed,
-                showMaxSpeed = entity.showMaxSpeed,
-                showElevationGain = entity.showElevationGain,
-                showCalories = entity.showCalories,
-                showAltitude = entity.showAltitude,
-                showGrade = entity.showGrade,
-                showCompass = entity.showCompass,
-                showPower = entity.showPower,
-                keepScreenOn = entity.keepScreenOn,
-                pairedHrmAddress = entity.pairedHrmAddress,
-                pairedCadenceAddress = entity.pairedCadenceAddress,
-                alerts = AlertConfig(
-                    maxSpeedKmh = entity.maxSpeedAlertKmh,
-                    hrZoneMinBpm = entity.hrZoneMinBpm,
-                    hrZoneMaxBpm = entity.hrZoneMaxBpm
-                ),
-                activeBikeProfileId = entity.activeBikeProfileId
-            )
-        } else {
-            UserSettings(
-                weightKg = 75,
-                age = 30,
-                languageCode = "en",
-                units = MeasurementUnits.METRIC
-            )
+            if (entity != null) {
+                val activeProfile = entity.activeBikeProfileId?.let { id -> profiles.firstOrNull { it.id == id } }
+                UserSettings(
+                    weightKg = entity.weightKg,
+                    age = entity.age,
+                    bikeWeightKg = activeProfile?.weightKg ?: entity.bikeWeightKg,
+                    bikeType =
+                        activeProfile?.type?.let { runCatching { BikeType.valueOf(it) }.getOrDefault(BikeType.ROAD) }
+                            ?: try {
+                                BikeType.valueOf(entity.bikeType)
+                            } catch (e: Exception) {
+                                BikeType.ROAD
+                            },
+                    languageCode = entity.languageCode,
+                    units =
+                        try {
+                            MeasurementUnits.valueOf(entity.units)
+                        } catch (e: Exception) {
+                            MeasurementUnits.METRIC
+                        },
+                    showDistance = entity.showDistance,
+                    showMovingTime = entity.showMovingTime,
+                    showAverageSpeed = entity.showAverageSpeed,
+                    showMaxSpeed = entity.showMaxSpeed,
+                    showElevationGain = entity.showElevationGain,
+                    showCalories = entity.showCalories,
+                    showAltitude = entity.showAltitude,
+                    showGrade = entity.showGrade,
+                    showCompass = entity.showCompass,
+                    showPower = entity.showPower,
+                    keepScreenOn = entity.keepScreenOn,
+                    pairedHrmAddress = entity.pairedHrmAddress,
+                    pairedCadenceAddress = entity.pairedCadenceAddress,
+                    alerts =
+                        AlertConfig(
+                            maxSpeedKmh = entity.maxSpeedAlertKmh,
+                            hrZoneMinBpm = entity.hrZoneMinBpm,
+                            hrZoneMaxBpm = entity.hrZoneMaxBpm,
+                        ),
+                    activeBikeProfileId = entity.activeBikeProfileId,
+                )
+            } else {
+                UserSettings(
+                    weightKg = 75,
+                    age = 30,
+                    languageCode = "en",
+                    units = MeasurementUnits.METRIC,
+                )
+            }
         }
-    }
 
-    override suspend fun save(settings: UserSettings): EmptyResult<DataError.Local> {
-        return try {
+    override suspend fun save(settings: UserSettings): EmptyResult<DataError.Local> =
+        try {
             dao.upsert(
                 UserSettingsEntity(
                     weightKg = settings.weightKg,
@@ -92,8 +102,8 @@ class RoomUserSettingsRepository(
                     maxSpeedAlertKmh = settings.alerts.maxSpeedKmh,
                     hrZoneMinBpm = settings.alerts.hrZoneMinBpm,
                     hrZoneMaxBpm = settings.alerts.hrZoneMaxBpm,
-                    activeBikeProfileId = settings.activeBikeProfileId
-                )
+                    activeBikeProfileId = settings.activeBikeProfileId,
+                ),
             )
             Result.Success(Unit)
         } catch (e: SQLiteFullException) {
@@ -101,5 +111,4 @@ class RoomUserSettingsRepository(
         } catch (e: Exception) {
             Result.Error(DataError.Local.UNKNOWN)
         }
-    }
 }

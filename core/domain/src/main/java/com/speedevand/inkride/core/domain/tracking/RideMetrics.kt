@@ -3,7 +3,7 @@ package com.speedevand.inkride.core.domain.tracking
 enum class GpsQuality {
     GOOD,
     FAIR,
-    POOR
+    POOR,
 }
 
 data class RideMetrics(
@@ -26,5 +26,5 @@ data class RideMetrics(
     val heartRateBpm: Int? = null,
     val cadenceRpm: Int? = null,
     // Local weather hint from the barometric pressure trend (offline, no API).
-    val weatherTrend: WeatherTrend = WeatherTrend.UNKNOWN
+    val weatherTrend: WeatherTrend = WeatherTrend.UNKNOWN,
 )

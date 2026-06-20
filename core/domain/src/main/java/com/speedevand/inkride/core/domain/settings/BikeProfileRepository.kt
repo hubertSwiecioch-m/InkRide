@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.Flow
  */
 interface BikeProfileRepository {
     fun observeProfiles(): Flow<List<BikeProfile>>
+
     suspend fun upsert(profile: BikeProfile): Result<Long, DataError.Local>
+
     suspend fun delete(id: Long): EmptyResult<DataError.Local>
 }

@@ -21,7 +21,7 @@ data class RouteProgress(
     val distanceToRouteM: Double,
     val isOffRoute: Boolean,
     val distanceToNextWaypointM: Double? = null,
-    val nextWaypointName: String? = null
+    val nextWaypointName: String? = null,
 )
 
 /**
@@ -34,7 +34,7 @@ data class RouteProgress(
  * along-route lengths.
  */
 class RouteFollower(
-    private val offRouteThresholdM: Double = 50.0
+    private val offRouteThresholdM: Double = 50.0,
 ) {
     // Per-route precomputation (cumulative distances + waypoint/finish positions
     // along the route) cached by route identity, so the work that never changes
@@ -42,7 +42,11 @@ class RouteFollower(
     // Only ever touched from RideTracker's single sample-collection coroutine.
     private var prepared: Prepared? = null
 
-    fun evaluate(route: PlannedRoute, latitude: Double, longitude: Double): RouteProgress {
+    fun evaluate(
+        route: PlannedRoute,
+        latitude: Double,
+        longitude: Double,
+    ): RouteProgress {
         val pts = route.points
         if (pts.isEmpty()) {
             return RouteProgress(distanceToRouteM = 0.0, isOffRoute = false)
@@ -53,9 +57,10 @@ class RouteFollower(
             return RouteProgress(
                 distanceToRouteM = d,
                 isOffRoute = d > offRouteThresholdM,
-                distanceToNextWaypointM = next
-                    ?.let { haversine(latitude, longitude, it.latitude, it.longitude) },
-                nextWaypointName = next?.name
+                distanceToNextWaypointM =
+                    next
+                        ?.let { haversine(latitude, longitude, it.latitude, it.longitude) },
+                nextWaypointName = next?.name,
             )
         }
 
@@ -67,7 +72,7 @@ class RouteFollower(
             distanceToRouteM = snap.distanceM,
             isOffRoute = snap.distanceM > offRouteThresholdM,
             distanceToNextWaypointM = next?.distanceM,
-            nextWaypointName = next?.name
+            nextWaypointName = next?.name,
         )
     }
 
@@ -77,22 +82,37 @@ class RouteFollower(
         // Each turn marker's along-route position + name, with the route end as a
         // trailing unnamed fallback so the readout shows distance-to-finish once
         // every named turn is behind the rider.
-        val waypointMarkers: List<Pair<Double, String?>>
+        val waypointMarkers: List<Pair<Double, String?>>,
     )
 
-    private data class Snap(val distanceM: Double, val cumulativeM: Double)
-    private data class NextWaypoint(val distanceM: Double, val name: String?)
-    private data class Projection(val distanceM: Double, val t: Double)
+    private data class Snap(
+        val distanceM: Double,
+        val cumulativeM: Double,
+    )
 
-    private fun prepared(route: PlannedRoute, pts: List<RoutePoint>): Prepared {
+    private data class NextWaypoint(
+        val distanceM: Double,
+        val name: String?,
+    )
+
+    private data class Projection(
+        val distanceM: Double,
+        val t: Double,
+    )
+
+    private fun prepared(
+        route: PlannedRoute,
+        pts: List<RoutePoint>,
+    ): Prepared {
         prepared?.let { if (it.route === route) return it }
         val cumulative = cumulativeDistances(pts)
-        val markers = buildList {
-            route.waypoints.forEach { wp ->
-                add(snap(pts, cumulative, wp.latitude, wp.longitude).cumulativeM to wp.name)
+        val markers =
+            buildList {
+                route.waypoints.forEach { wp ->
+                    add(snap(pts, cumulative, wp.latitude, wp.longitude).cumulativeM to wp.name)
+                }
+                add(cumulative.last() to null)
             }
-            add(cumulative.last() to null)
-        }
         return Prepared(route, cumulative, markers).also { prepared = it }
     }
 
@@ -100,10 +120,13 @@ class RouteFollower(
     private fun cumulativeDistances(pts: List<RoutePoint>): DoubleArray {
         val cum = DoubleArray(pts.size)
         for (i in 1 until pts.size) {
-            cum[i] = cum[i - 1] + haversine(
-                pts[i - 1].latitude, pts[i - 1].longitude,
-                pts[i].latitude, pts[i].longitude
-            )
+            cum[i] = cum[i - 1] +
+                haversine(
+                    pts[i - 1].latitude,
+                    pts[i - 1].longitude,
+                    pts[i].latitude,
+                    pts[i].longitude,
+                )
         }
         return cum
     }
@@ -113,7 +136,7 @@ class RouteFollower(
         pts: List<RoutePoint>,
         cumulative: DoubleArray,
         latitude: Double,
-        longitude: Double
+        longitude: Double,
     ): Snap {
         var bestDistance = Double.MAX_VALUE
         var bestCumulative = 0.0
@@ -135,18 +158,19 @@ class RouteFollower(
      */
     private fun nextWaypoint(
         markers: List<Pair<Double, String?>>,
-        currentCumulative: Double
-    ): NextWaypoint? = markers
-        .filter { it.first > currentCumulative + AHEAD_EPSILON_M }
-        .minByOrNull { it.first }
-        ?.let { NextWaypoint(distanceM = it.first - currentCumulative, name = it.second) }
+        currentCumulative: Double,
+    ): NextWaypoint? =
+        markers
+            .filter { it.first > currentCumulative + AHEAD_EPSILON_M }
+            .minByOrNull { it.first }
+            ?.let { NextWaypoint(distanceM = it.first - currentCumulative, name = it.second) }
 
     /** Projects P=(lat,lon) onto segment a→b in a local metre plane centred at P. */
     private fun projectToSegment(
         latitude: Double,
         longitude: Double,
         a: RoutePoint,
-        b: RoutePoint
+        b: RoutePoint,
     ): Projection {
         val cosLat = cos(latitude.toRadians())
         val ax = (a.longitude - longitude) * cosLat * METERS_PER_DEGREE
@@ -163,11 +187,17 @@ class RouteFollower(
         return Projection(distanceM = sqrt(cx * cx + cy * cy), t = t)
     }
 
-    private fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    private fun haversine(
+        lat1: Double,
+        lon1: Double,
+        lat2: Double,
+        lon2: Double,
+    ): Double {
         val dLat = (lat2 - lat1).toRadians()
         val dLon = (lon2 - lon1).toRadians()
-        val a = sin(dLat / 2).pow(2) +
-            cos(lat1.toRadians()) * cos(lat2.toRadians()) * sin(dLon / 2).pow(2)
+        val a =
+            sin(dLat / 2).pow(2) +
+                cos(lat1.toRadians()) * cos(lat2.toRadians()) * sin(dLon / 2).pow(2)
         return EARTH_RADIUS_M * 2 * asin(min(1.0, sqrt(a)))
     }
 
@@ -176,6 +206,7 @@ class RouteFollower(
     private companion object {
         const val EARTH_RADIUS_M = 6_371_000.0
         const val METERS_PER_DEGREE = PI / 180.0 * EARTH_RADIUS_M
+
         // Ignore turn markers essentially at the rider's feet so the readout
         // advances to the genuinely-next turn rather than sticking at ~0 m.
         const val AHEAD_EPSILON_M = 5.0

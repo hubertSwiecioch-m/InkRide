@@ -8,18 +8,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class RoomLifetimeStatsRepository(
-    private val dao: RideHistoryDao
+    private val dao: RideHistoryDao,
 ) : LifetimeStatsRepository {
-
-    override fun observeLifetimeStats(): Flow<LifetimeStats> =
-        dao.observeLifetimeStats().map { it.toDomain() }
+    override fun observeLifetimeStats(): Flow<LifetimeStats> = dao.observeLifetimeStats().map { it.toDomain() }
 }
 
-private fun LifetimeStatsAggregate.toDomain() = LifetimeStats(
-    totalRides = totalRides,
-    totalDistanceKm = totalDistanceKm,
-    totalMovingTimeSeconds = totalMovingTimeSeconds,
-    totalElevationGainM = totalElevationGainM,
-    maxSpeedKmh = maxSpeedKmh,
-    totalCaloriesKcal = totalCaloriesKcal
-)
+private fun LifetimeStatsAggregate.toDomain() =
+    LifetimeStats(
+        totalRides = totalRides,
+        totalDistanceKm = totalDistanceKm,
+        totalMovingTimeSeconds = totalMovingTimeSeconds,
+        totalElevationGainM = totalElevationGainM,
+        maxSpeedKmh = maxSpeedKmh,
+        totalCaloriesKcal = totalCaloriesKcal,
+    )

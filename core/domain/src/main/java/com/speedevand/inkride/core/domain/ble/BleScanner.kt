@@ -12,11 +12,12 @@ import kotlinx.coroutines.flow.Flow
  */
 interface BleScanner {
     fun available(): EmptyResult<BleScanError>
+
     fun scan(type: BleSensorType): Flow<BleDevice>
 }
 
 enum class BleScanError : Error {
     BLUETOOTH_OFF,
     PERMISSION_DENIED,
-    UNSUPPORTED
+    UNSUPPORTED,
 }

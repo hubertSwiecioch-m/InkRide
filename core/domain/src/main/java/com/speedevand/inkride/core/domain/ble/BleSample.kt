@@ -10,5 +10,5 @@ data class BleSample(
     val timestampMs: Long,
     val heartRateBpm: Int? = null,
     val cadenceRpm: Int? = null,
-    val wheelRevolutions: Long? = null
+    val wheelRevolutions: Long? = null,
 )

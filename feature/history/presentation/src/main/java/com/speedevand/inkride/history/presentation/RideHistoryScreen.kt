@@ -34,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.speedevand.inkride.core.design_system.InkRideTheme
 import com.mudita.mmd.components.bottom_sheet.ModalBottomSheetMMD
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
@@ -45,6 +44,7 @@ import com.mudita.mmd.components.snackbar.SnackbarHostStateMMD
 import com.mudita.mmd.components.snackbar.SnackbarResultMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.mudita.mmd.components.top_app_bar.TopAppBarMMD
+import com.speedevand.inkride.core.design_system.InkRideTheme
 import com.speedevand.inkride.core.presentation.ObserveAsEvents
 import com.speedevand.inkride.core.presentation.verticalScrollbar
 import kotlinx.coroutines.launch
@@ -53,7 +53,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun RideHistoryRoot(
     onNavigateToDetail: (Long) -> Unit,
-    onNavigateToLifetimeStats: () -> Unit
+    onNavigateToLifetimeStats: () -> Unit,
 ) {
     val context = LocalContext.current
     val viewModel: RideHistoryViewModel = koinViewModel()
@@ -65,23 +65,32 @@ fun RideHistoryRoot(
 
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            is RideHistoryEvent.NavigateToDetail -> onNavigateToDetail(event.id)
-            RideHistoryEvent.NavigateToLifetimeStats -> onNavigateToLifetimeStats()
-            is RideHistoryEvent.ShowError -> {
-                Toast.makeText(
-                    context,
-                    event.message.asString(context),
-                    Toast.LENGTH_LONG
-                ).show()
+            is RideHistoryEvent.NavigateToDetail -> {
+                onNavigateToDetail(event.id)
             }
+
+            RideHistoryEvent.NavigateToLifetimeStats -> {
+                onNavigateToLifetimeStats()
+            }
+
+            is RideHistoryEvent.ShowError -> {
+                Toast
+                    .makeText(
+                        context,
+                        event.message.asString(context),
+                        Toast.LENGTH_LONG,
+                    ).show()
+            }
+
             RideHistoryEvent.ShowUndoSnackbar -> {
                 scope.launch {
                     snackbarHostState.currentSnackbarData?.dismiss()
-                    val result = snackbarHostState.showSnackbar(
-                        message = deletedMessage,
-                        actionLabel = undoLabel,
-                        duration = SnackbarDurationMMD.Long
-                    )
+                    val result =
+                        snackbarHostState.showSnackbar(
+                            message = deletedMessage,
+                            actionLabel = undoLabel,
+                            duration = SnackbarDurationMMD.Long,
+                        )
                     if (result == SnackbarResultMMD.ActionPerformed) {
                         viewModel.onAction(RideHistoryAction.OnUndoDelete)
                     }
@@ -93,7 +102,7 @@ fun RideHistoryRoot(
     RideHistoryScreen(
         state = state,
         snackbarHostState = snackbarHostState,
-        onAction = viewModel::onAction
+        onAction = viewModel::onAction,
     )
 }
 
@@ -102,7 +111,7 @@ fun RideHistoryRoot(
 fun RideHistoryScreen(
     state: RideHistoryState,
     snackbarHostState: SnackbarHostStateMMD,
-    onAction: (RideHistoryAction) -> Unit
+    onAction: (RideHistoryAction) -> Unit,
 ) {
     var showConfirmDeleteAll by remember { mutableStateOf(false) }
 
@@ -111,28 +120,29 @@ fun RideHistoryScreen(
             onDismissRequest = { showConfirmDeleteAll = false },
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 TextMMD(
                     text = stringResource(R.string.ride_history_delete_all_title),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 TextMMD(
                     text = stringResource(R.string.ride_history_delete_all_message),
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     OutlinedButtonMMD(
                         onClick = { showConfirmDeleteAll = false },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     ) {
                         TextMMD(text = stringResource(R.string.history_action_cancel))
                     }
@@ -141,7 +151,7 @@ fun RideHistoryScreen(
                             onAction(RideHistoryAction.OnDeleteAll)
                             showConfirmDeleteAll = false
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     ) {
                         TextMMD(text = stringResource(R.string.history_action_delete))
                     }
@@ -158,54 +168,56 @@ fun RideHistoryScreen(
                     TextMMD(
                         text = stringResource(R.string.ride_history_title),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 },
                 actions = {
                     IconButton(onClick = { onAction(RideHistoryAction.OnLifetimeStatsClick) }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ShowChart,
-                            contentDescription = stringResource(R.string.ride_history_stats)
+                            contentDescription = stringResource(R.string.ride_history_stats),
                         )
                     }
                     if (state.rides.isNotEmpty()) {
                         IconButton(onClick = { showConfirmDeleteAll = true }) {
                             Icon(
                                 imageVector = Icons.Default.DeleteSweep,
-                                contentDescription = stringResource(R.string.ride_history_delete_all)
+                                contentDescription = stringResource(R.string.ride_history_delete_all),
                             )
                         }
                     }
-                }
+                },
             )
         },
-        snackbarHost = { SnackbarHostMMD(snackbarHostState) }
+        snackbarHost = { SnackbarHostMMD(snackbarHostState) },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 24.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 24.dp),
         ) {
             if (state.rides.isEmpty() && !state.isLoading) {
                 TextMMD(
                     text = stringResource(R.string.ride_history_empty),
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(top = 24.dp)
+                    modifier = Modifier.padding(top = 24.dp),
                 )
             } else {
                 val lazyListState = rememberLazyListState()
                 LazyColumn(
                     state = lazyListState,
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScrollbar(lazyListState)
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .verticalScrollbar(lazyListState),
                 ) {
                     items(state.rides, key = { it.id }) { ride ->
                         RideHistoryItem(
                             ride = ride,
                             onClick = { onAction(RideHistoryAction.OnRideClick(ride.id)) },
-                            onDelete = { onAction(RideHistoryAction.OnDeleteRide(ride.id)) }
+                            onDelete = { onAction(RideHistoryAction.OnDeleteRide(ride.id)) },
                         )
                         HorizontalDividerMMD()
                     }
@@ -219,20 +231,24 @@ fun RideHistoryScreen(
 private fun RideHistoryItem(
     ride: RideRecordUi,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             val separator = "  ·  "
             TextMMD(text = ride.formattedDate, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-            TextMMD(text = "${ride.distanceKm}$separator${ride.movingTime}$separator${ride.averageSpeedKmh}", style = MaterialTheme.typography.bodyMedium)
+            TextMMD(
+                text = "${ride.distanceKm}$separator${ride.movingTime}$separator${ride.averageSpeedKmh}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
         IconButton(onClick = onDelete) {
             Icon(imageVector = Icons.Default.Delete, contentDescription = stringResource(R.string.ride_history_cd_delete))
@@ -245,27 +261,29 @@ private fun RideHistoryItem(
 private fun RideHistoryScreenPreview() {
     InkRideTheme {
         RideHistoryScreen(
-            state = RideHistoryState(
-                isLoading = false,
-                rides = listOf(
-                    RideRecordUi(
-                        id = 1L,
-                        formattedDate = "14 Jun 2026, 08:32",
-                        distanceKm = "18.42 km",
-                        movingTime = "00:48:12",
-                        averageSpeedKmh = "23.8 km/h"
-                    ),
-                    RideRecordUi(
-                        id = 2L,
-                        formattedDate = "12 Jun 2026, 17:05",
-                        distanceKm = "42.10 km",
-                        movingTime = "01:54:03",
-                        averageSpeedKmh = "22.1 km/h"
-                    )
-                )
-            ),
+            state =
+                RideHistoryState(
+                    isLoading = false,
+                    rides =
+                        listOf(
+                            RideRecordUi(
+                                id = 1L,
+                                formattedDate = "14 Jun 2026, 08:32",
+                                distanceKm = "18.42 km",
+                                movingTime = "00:48:12",
+                                averageSpeedKmh = "23.8 km/h",
+                            ),
+                            RideRecordUi(
+                                id = 2L,
+                                formattedDate = "12 Jun 2026, 17:05",
+                                distanceKm = "42.10 km",
+                                movingTime = "01:54:03",
+                                averageSpeedKmh = "22.1 km/h",
+                            ),
+                        ),
+                ),
             snackbarHostState = remember { SnackbarHostStateMMD() },
-            onAction = {}
+            onAction = {},
         )
     }
 }

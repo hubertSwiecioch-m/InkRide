@@ -7,15 +7,15 @@ import com.speedevand.inkride.core.domain.tracking.RideMetrics
 import org.junit.jupiter.api.Test
 
 class RideMetricsUiTest {
-
     @Test
     fun `toRideMetricsUi with metric units preserves values`() {
-        val metrics = RideMetrics(
-            currentSpeedKmh = 25.5,
-            distanceKm = 10.0,
-            elevationGainM = 150.0,
-            altitudeM = 200.0
-        )
+        val metrics =
+            RideMetrics(
+                currentSpeedKmh = 25.5,
+                distanceKm = 10.0,
+                elevationGainM = 150.0,
+                altitudeM = 200.0,
+            )
         val ui = metrics.toRideMetricsUi(MeasurementUnits.METRIC)
         assertThat(ui.currentSpeedKmh).isEqualTo("25.5")
         assertThat(ui.speedUnit).isEqualTo("km/h")

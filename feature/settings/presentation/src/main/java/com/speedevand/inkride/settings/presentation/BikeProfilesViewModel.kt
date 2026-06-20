@@ -23,9 +23,8 @@ import java.util.Locale
 
 class BikeProfilesViewModel(
     private val bikeProfileRepository: BikeProfileRepository,
-    private val userSettingsRepository: UserSettingsRepository
+    private val userSettingsRepository: UserSettingsRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(BikeProfilesState())
     val state = _state.asStateFlow()
 
@@ -45,7 +44,7 @@ class BikeProfilesViewModel(
         viewModelScope.launch {
             combine(
                 bikeProfileRepository.observeProfiles(),
-                userSettingsRepository.observeSettings()
+                userSettingsRepository.observeSettings(),
             ) { profiles, settings ->
                 currentSettings = settings
                 val factor = if (settings.units == MeasurementUnits.IMPERIAL) WEIGHT_FACTOR_LBS else 1.0
@@ -55,7 +54,7 @@ class BikeProfilesViewModel(
                         name = profile.name,
                         weight = String.format(Locale.ROOT, "%.1f", profile.weightKg * factor),
                         type = profile.type,
-                        isActive = profile.id == settings.activeBikeProfileId
+                        isActive = profile.id == settings.activeBikeProfileId,
                     )
                 } to settings.units
             }.collect { (profiles, units) ->
@@ -66,18 +65,24 @@ class BikeProfilesViewModel(
 
     fun onAction(action: BikeProfilesAction) {
         when (action) {
-            is BikeProfilesAction.OnNameChange ->
+            is BikeProfilesAction.OnNameChange -> {
                 _state.update { it.copy(draftName = action.value, draftNameError = false) }
-            is BikeProfilesAction.OnWeightChange ->
+            }
+
+            is BikeProfilesAction.OnWeightChange -> {
                 _state.update {
                     it.copy(
                         draftWeight = action.value.filter { c -> c.isDigit() || c == '.' },
-                        draftWeightError = false
+                        draftWeightError = false,
                     )
                 }
-            is BikeProfilesAction.OnTypeChange ->
+            }
+
+            is BikeProfilesAction.OnTypeChange -> {
                 _state.update { it.copy(draftType = action.type) }
-            BikeProfilesAction.OnAddNew ->
+            }
+
+            BikeProfilesAction.OnAddNew -> {
                 _state.update {
                     it.copy(
                         isEditing = true,
@@ -86,9 +91,11 @@ class BikeProfilesViewModel(
                         draftWeight = "",
                         draftType = BikeType.ROAD,
                         draftNameError = false,
-                        draftWeightError = false
+                        draftWeightError = false,
                     )
                 }
+            }
+
             is BikeProfilesAction.OnEdit -> {
                 val profile = _state.value.profiles.firstOrNull { it.id == action.id } ?: return
                 _state.update {
@@ -99,16 +106,31 @@ class BikeProfilesViewModel(
                         draftWeight = profile.weight,
                         draftType = profile.type,
                         draftNameError = false,
-                        draftWeightError = false
+                        draftWeightError = false,
                     )
                 }
             }
-            BikeProfilesAction.OnCancelDraft -> clearDraft()
-            BikeProfilesAction.OnSaveDraft -> saveDraft()
-            is BikeProfilesAction.OnDelete -> deleteProfile(action.id)
-            is BikeProfilesAction.OnSetActive -> setActive(action.id)
-            BikeProfilesAction.OnBackClick -> viewModelScope.launch {
-                _events.send(BikeProfilesEvent.OnBack)
+
+            BikeProfilesAction.OnCancelDraft -> {
+                clearDraft()
+            }
+
+            BikeProfilesAction.OnSaveDraft -> {
+                saveDraft()
+            }
+
+            is BikeProfilesAction.OnDelete -> {
+                deleteProfile(action.id)
+            }
+
+            is BikeProfilesAction.OnSetActive -> {
+                setActive(action.id)
+            }
+
+            BikeProfilesAction.OnBackClick -> {
+                viewModelScope.launch {
+                    _events.send(BikeProfilesEvent.OnBack)
+                }
             }
         }
     }
@@ -124,40 +146,44 @@ class BikeProfilesViewModel(
         }
 
         val factor = if (current.units == MeasurementUnits.IMPERIAL) WEIGHT_FACTOR_LBS else 1.0
-        val weightKg = weightValue!! / factor
+        val weightKg = weightValue / factor
         val noActiveBefore = currentSettings.activeBikeProfileId == null
-        val profile = BikeProfile(
-            id = current.editingId ?: 0L,
-            name = current.draftName.trim(),
-            weightKg = weightKg,
-            type = current.draftType
-        )
+        val profile =
+            BikeProfile(
+                id = current.editingId ?: 0L,
+                name = current.draftName.trim(),
+                weightKg = weightKg,
+                type = current.draftType,
+            )
 
         viewModelScope.launch {
-            bikeProfileRepository.upsert(profile)
+            bikeProfileRepository
+                .upsert(profile)
                 .onSuccess { newId ->
                     // First profile (or none active yet) becomes the active one.
                     if (current.editingId == null && noActiveBefore) {
                         persistActiveId(newId)
                     }
                     clearDraft()
-                }
-                .onFailure { error -> _events.send(BikeProfilesEvent.ShowError(error.toUiText())) }
+                }.onFailure { error -> _events.send(BikeProfilesEvent.ShowError(error.toUiText())) }
         }
     }
 
     private fun deleteProfile(id: Long) {
         viewModelScope.launch {
-            bikeProfileRepository.delete(id)
+            bikeProfileRepository
+                .delete(id)
                 .onSuccess {
                     // If the deleted profile was active, fall back to another
                     // remaining profile (or none → flat defaults).
                     if (currentSettings.activeBikeProfileId == id) {
-                        val next = _state.value.profiles.firstOrNull { it.id != id }?.id
+                        val next =
+                            _state.value.profiles
+                                .firstOrNull { it.id != id }
+                                ?.id
                         persistActiveId(next)
                     }
-                }
-                .onFailure { error -> _events.send(BikeProfilesEvent.ShowError(error.toUiText())) }
+                }.onFailure { error -> _events.send(BikeProfilesEvent.ShowError(error.toUiText())) }
         }
     }
 
@@ -166,7 +192,8 @@ class BikeProfilesViewModel(
     }
 
     private suspend fun persistActiveId(id: Long?) {
-        userSettingsRepository.save(currentSettings.copy(activeBikeProfileId = id))
+        userSettingsRepository
+            .save(currentSettings.copy(activeBikeProfileId = id))
             .onFailure { error -> _events.send(BikeProfilesEvent.ShowError(error.toUiText())) }
     }
 
@@ -179,7 +206,7 @@ class BikeProfilesViewModel(
                 draftWeight = "",
                 draftType = BikeType.ROAD,
                 draftNameError = false,
-                draftWeightError = false
+                draftWeightError = false,
             )
         }
     }

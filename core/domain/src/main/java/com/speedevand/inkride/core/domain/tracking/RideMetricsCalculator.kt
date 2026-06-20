@@ -56,7 +56,7 @@ class RideMetricsCalculator(
     // streak above and stay frozen at zero for its whole duration. After this
     // window we trust whatever fixes arrive — the brief cold-start suppression
     // is bounded, and movement is recorded for the rest of the ride.
-    private val warmupMaxDurationMs: Long = 10_000L
+    private val warmupMaxDurationMs: Long = 10_000L,
 ) {
     private var sessionStartMs: Long? = null
     private var lastSample: RideSensorSample? = null
@@ -69,11 +69,13 @@ class RideMetricsCalculator(
     private var lastElevationGainAltitudeM: Double? = null
     private var caloriesKcal: Double = 0.0
     private var lastSpeedMps: Double = 0.0
+
     // Last speed reported to the UI. Carried forward on non-location samples
     // (barometer/heading) so the speedometer doesn't flicker to 0 between the
     // ~1 Hz GPS fixes — important on slow-refresh E-Ink displays.
     private var lastReportedSpeedMps: Double = 0.0
     private var currentPowerWatts: Int = 0
+
     // Time-weighted average power over MOVING time. Sample emission is irregular
     // (GPS ~1 Hz, barometer ~2 Hz, heading bursty), so a simple per-sample mean
     // would be biased by sample rate. Weighting by elapsed moving time fixes that
@@ -108,6 +110,7 @@ class RideMetricsCalculator(
     // the rest of the session.
     private var consecutiveReliableFixes: Int = 0
     private var isGpsWarmedUp: Boolean = false
+
     // Timestamp of the first location fix this session — anchors the warm-up
     // timeout fallback so it can't suppress movement indefinitely.
     private var firstLocationFixMs: Long? = null
@@ -141,7 +144,11 @@ class RideMetricsCalculator(
         weatherTrendCalculator.reset()
     }
 
-    fun process(sample: RideSensorSample, userSettings: UserSettings, isPaused: Boolean = false): RideMetrics {
+    fun process(
+        sample: RideSensorSample,
+        userSettings: UserSettings,
+        isPaused: Boolean = false,
+    ): RideMetrics {
         val startTime = sessionStartMs ?: sample.timestampMs.also { sessionStartMs = it }
         val previous = lastSample
 
@@ -163,7 +170,7 @@ class RideMetricsCalculator(
                 elapsedTimeSeconds = 0L,
                 gpsAccuracyM = sample.accuracyM,
                 bearingDegrees = sample.bearingDegrees,
-                weatherTrend = weatherTrend
+                weatherTrend = weatherTrend,
             )
         }
 
@@ -187,23 +194,23 @@ class RideMetricsCalculator(
         var locationOutlierRejected = false
 
         if (isLocationSample) {
-            // ── Distance between GPS fixes ──────────────────────────────────
             // Use lastLocationSample so position deltas match the actual fix
             // interval, not the arbitrary (faster) sensor sample interval.
-            val (segmentDistanceM, locationDtMs) = if (lastLocationSample != null) {
-                val dist = haversineDistanceMeters(
-                    lastLocationSample!!.latitude!!,
-                    lastLocationSample!!.longitude!!,
-                    sample.latitude,
-                    sample.longitude
-                )
-                val ldt = (sample.timestampMs - lastLocationSample!!.timestampMs).coerceAtLeast(0L)
-                dist to ldt
-            } else {
-                0.0 to 0L
-            }
+            val (segmentDistanceM, locationDtMs) =
+                if (lastLocationSample != null) {
+                    val dist =
+                        haversineDistanceMeters(
+                            lastLocationSample!!.latitude!!,
+                            lastLocationSample!!.longitude!!,
+                            sample.latitude,
+                            sample.longitude,
+                        )
+                    val ldt = (sample.timestampMs - lastLocationSample!!.timestampMs).coerceAtLeast(0L)
+                    dist to ldt
+                } else {
+                    0.0 to 0L
+                }
 
-            // ── GPS outlier rejection ──────────────────────────────────────
             val locationSpeedMps = if (locationDtMs > 0L) segmentDistanceM / (locationDtMs / 1000.0) else 0.0
             val isSpeedOutlier = locationSpeedMps > maxPlausibleSpeedMps
 
@@ -211,48 +218,52 @@ class RideMetricsCalculator(
             // acceleration exceeds what's physically plausible for cycling.
             // Only active when we have a meaningful speed reference (> 0) —
             // otherwise the first movement from standstill would always trip it.
-            val isAccelOutlier = if (locationDtMs > 0L && lastSpeedMps > 0.0) {
-                abs(locationSpeedMps - lastSpeedMps) / (locationDtMs / 1000.0) > maxPlausibleAccelMps2
-            } else false
+            val isAccelOutlier =
+                if (locationDtMs > 0L && lastSpeedMps > 0.0) {
+                    abs(locationSpeedMps - lastSpeedMps) / (locationDtMs / 1000.0) > maxPlausibleAccelMps2
+                } else {
+                    false
+                }
 
             // Bounce detection: GPS sometimes jumps to a distant point and
             // immediately returns. When the new position is close to the one
             // from 3 fixes ago but the intermediate fix was far away, the
             // current segment is the "return" leg.
-            val isBounce: Boolean = if (recentPositions.size >= 3) {
-                val oldest = recentPositions.first()
-                val middle = recentPositions[1]
-                val jumpDist = haversineDistanceMeters(oldest.first, oldest.second, middle.first, middle.second)
-                val returnDist = haversineDistanceMeters(oldest.first, oldest.second, sample.latitude, sample.longitude)
-                jumpDist > bounceJumpRadiusM && returnDist < bounceReturnRadiusM
-            } else {
-                false
-            }
+            val isBounce: Boolean =
+                if (recentPositions.size >= 3) {
+                    val oldest = recentPositions.first()
+                    val middle = recentPositions[1]
+                    val jumpDist = haversineDistanceMeters(oldest.first, oldest.second, middle.first, middle.second)
+                    val returnDist = haversineDistanceMeters(oldest.first, oldest.second, sample.latitude, sample.longitude)
+                    jumpDist > bounceJumpRadiusM && returnDist < bounceReturnRadiusM
+                } else {
+                    false
+                }
 
             // GPS speed vs. distance-speed cross-validation. When GPS (Doppler)
             // speed is reliable but distance-speed is wildly different, the
             // position is likely a glitch — reject the segment.
             val gpsSpeedForCheck = sample.speedFromGpsMps
-            val isCrossValidationFail = gpsSpeedForCheck != null &&
-                sample.accuracyM?.toDouble()?.let { it <= maxReliableAccuracyM } == true &&
-                locationDtMs > 0L &&
-                locationSpeedMps > gpsSpeedForCheck * crossValidationMaxRatio &&
-                locationSpeedMps > crossValidationMinSpeedMps
+            val isCrossValidationFail =
+                gpsSpeedForCheck != null &&
+                    sample.accuracyM?.toDouble()?.let { it <= maxReliableAccuracyM } == true &&
+                    locationDtMs > 0L &&
+                    locationSpeedMps > gpsSpeedForCheck * crossValidationMaxRatio &&
+                    locationSpeedMps > crossValidationMinSpeedMps
 
             val isOutlier = isSpeedOutlier || isAccelOutlier || isBounce || isCrossValidationFail
             locationOutlierRejected = isOutlier
             val effectiveSegmentDistanceM = if (isOutlier) 0.0 else segmentDistanceM
 
-            // ── Accuracy checks ────────────────────────────────────────────
             // Default to UNRELIABLE when accuracy is unknown — never assume perfect.
             val hasReliableCurrentAccuracy = sample.accuracyM?.toDouble()?.let { it <= maxReliableAccuracyM } ?: false
             val hasReliablePreviousAccuracy = lastLocationSample?.accuracyM?.toDouble()?.let { it <= maxReliableAccuracyM } ?: false
-            val combinedAccuracyM = max(
-                lastLocationSample?.accuracyM?.toDouble() ?: 0.0,
-                sample.accuracyM?.toDouble() ?: 0.0
-            )
+            val combinedAccuracyM =
+                max(
+                    lastLocationSample?.accuracyM?.toDouble() ?: 0.0,
+                    sample.accuracyM?.toDouble() ?: 0.0,
+                )
 
-            // ── GPS cold-start warm-up ─────────────────────────────────────
             // Count consecutive reliable fixes; a single unreliable fix breaks
             // the streak. The receiver is trusted only once the streak reaches
             // [warmupReliableFixes]. Until then the Doppler speed and position
@@ -275,18 +286,19 @@ class RideMetricsCalculator(
                 }
             }
 
-            // ── Auto-pause detection ───────────────────────────────────────
             // Clamp Doppler speed to a plausible range: a single glitched fix
             // (even with "good" accuracy) must not poison max speed or display.
-            val speedMpsFromGps = if (hasReliableCurrentAccuracy) {
-                sample.speedFromGpsMps?.takeIf { it in 0.0..maxPlausibleSpeedMps }
-            } else null
+            val speedMpsFromGps =
+                if (hasReliableCurrentAccuracy) {
+                    sample.speedFromGpsMps?.takeIf { it in 0.0..maxPlausibleSpeedMps }
+                } else {
+                    null
+                }
             val speedKmhFromGps = (speedMpsFromGps ?: 0.0) * 3.6
 
             val isMovingBasedOnGps = speedKmhFromGps >= autoPauseThresholdKmh
             val isSignificantMovement = effectiveSegmentDistanceM > (combinedAccuracyM * 0.5)
 
-            // ── Stationary-drift protection ────────────────────────────────
             // When the rider appears stationary for several consecutive fixes,
             // require 2 consecutive "moving" confirmations before accumulating
             // distance. This prevents single-fix GPS wobble from adding false
@@ -304,20 +316,29 @@ class RideMetricsCalculator(
                 }
             }
 
-            val effectiveDistanceM = when {
-                // Suppress all displacement until the GPS fix has converged.
-                !isGpsWarmedUp -> 0.0
-                isMovingBasedOnGps || isSignificantMovement ->
-                    if (movingConfirmationsNeeded > 0) 0.0 else effectiveSegmentDistanceM
-                else -> 0.0
-            }
+            val effectiveDistanceM =
+                when {
+                    // Suppress all displacement until the GPS fix has converged.
+                    !isGpsWarmedUp -> {
+                        0.0
+                    }
+
+                    isMovingBasedOnGps || isSignificantMovement -> {
+                        if (movingConfirmationsNeeded > 0) 0.0 else effectiveSegmentDistanceM
+                    }
+
+                    else -> {
+                        0.0
+                    }
+                }
 
             // Speed from distance uses the location-fix interval.
-            val speedMpsFromDistance = if (locationDtMs > 0L && hasReliableCurrentAccuracy && hasReliablePreviousAccuracy) {
-                effectiveDistanceM / (locationDtMs / 1000.0)
-            } else {
-                0.0
-            }
+            val speedMpsFromDistance =
+                if (locationDtMs > 0L && hasReliableCurrentAccuracy && hasReliablePreviousAccuracy) {
+                    effectiveDistanceM / (locationDtMs / 1000.0)
+                } else {
+                    0.0
+                }
 
             speedMps = speedMpsFromGps ?: speedMpsFromDistance
             isActuallyMoving = isMovingBasedOnGps || isSignificantMovement
@@ -342,28 +363,31 @@ class RideMetricsCalculator(
                 }
                 totalDistanceM += effectiveDistanceM
                 maxSpeedMps = max(maxSpeedMps, speedMps)
-                caloriesKcal += caloriesEstimator.estimateKcal(
-                    speedKmh = speedMps * 3.6,
-                    intervalMs = integrationDtMs,
-                    userSettings = userSettings,
-                    gradePercent = currentGrade
-                )
+                caloriesKcal +=
+                    caloriesEstimator.estimateKcal(
+                        speedKmh = speedMps * 3.6,
+                        intervalMs = integrationDtMs,
+                        userSettings = userSettings,
+                        gradePercent = currentGrade,
+                    )
 
                 // EMA-smoothed acceleration (alpha = 0.3) over the fix interval
                 // to reduce GPS-derivative noise.
                 val rawAccel = if (locationDtMs > 0L) (speedMps - lastSpeedMps) / (locationDtMs / 1000.0) else 0.0
-                smoothedAccelMps2 = if (smoothedAccelMps2 == 0.0 && rawAccel != 0.0) {
-                    rawAccel
-                } else {
-                    smoothedAccelMps2 + 0.3 * (rawAccel - smoothedAccelMps2)
-                }
+                smoothedAccelMps2 =
+                    if (smoothedAccelMps2 == 0.0 && rawAccel != 0.0) {
+                        rawAccel
+                    } else {
+                        smoothedAccelMps2 + 0.3 * (rawAccel - smoothedAccelMps2)
+                    }
 
-                currentPowerWatts = powerEstimator.estimateWatts(
-                    speedMps = speedMps,
-                    accelerationMps2 = smoothedAccelMps2,
-                    gradePercent = currentGrade,
-                    userSettings = userSettings
-                )
+                currentPowerWatts =
+                    powerEstimator.estimateWatts(
+                        speedMps = speedMps,
+                        accelerationMps2 = smoothedAccelMps2,
+                        gradePercent = currentGrade,
+                        userSettings = userSettings,
+                    )
                 if (isActuallyMoving) {
                     powerWeightedSumWattMs += currentPowerWatts.toDouble() * integrationDtMs
                     powerDurationMs += integrationDtMs
@@ -378,7 +402,6 @@ class RideMetricsCalculator(
 
         val speedKmh = speedMps * 3.6
 
-        // ── Altitude: barometer/GPS fusion + EMA smoothing ──────────────────
         val rawAltitudeM = fusedAltitude(sample, dtMs)
         if (rawAltitudeM != null) {
             // Smooth altitude (EMA) — barometer is cleaner, GPS needs more smoothing.
@@ -406,7 +429,6 @@ class RideMetricsCalculator(
                     }
                 }
 
-                // ── Grade from sliding window ──────────────────────────────
                 gradePoints.addLast(totalDistanceM to currentSmoothed)
                 // Keep window ~2× minGradeDistanceM for a stable reading.
                 while (gradePoints.size > 2 && totalDistanceM - gradePoints.first().first > minGradeDistanceM * 2) {
@@ -445,11 +467,12 @@ class RideMetricsCalculator(
 
         val elapsedSeconds = ((sample.timestampMs - startTime) / 1000L).coerceAtLeast(0L)
         val movingSeconds = movingTimeMs / 1000L
-        val avgSpeedKmh = if (movingTimeMs > 0L) {
-            (totalDistanceM / (movingTimeMs / 1000.0)) * 3.6
-        } else {
-            0.0
-        }
+        val avgSpeedKmh =
+            if (movingTimeMs > 0L) {
+                (totalDistanceM / (movingTimeMs / 1000.0)) * 3.6
+            } else {
+                0.0
+            }
 
         val avgPower = if (powerDurationMs > 0L) (powerWeightedSumWattMs / powerDurationMs).toInt() else 0
 
@@ -471,7 +494,7 @@ class RideMetricsCalculator(
             gpsAccuracyM = sample.accuracyM,
             bearingDegrees = sample.bearingDegrees ?: previous.bearingDegrees,
             gpsQuality = quality,
-            weatherTrend = weatherTrend
+            weatherTrend = weatherTrend,
         )
     }
 
@@ -483,12 +506,16 @@ class RideMetricsCalculator(
      * The offset between barometer and GPS is tracked with a ~10-minute time
      * constant, correcting barometric drift without introducing GPS noise.
      */
-    private fun fusedAltitude(sample: RideSensorSample, dtMs: Long): Double? {
+    private fun fusedAltitude(
+        sample: RideSensorSample,
+        dtMs: Long,
+    ): Double? {
         // Clamp barometric altitude to plausible cycling range.
         // Values outside [-500, 9000] meters indicate sensor errors.
-        val baro = sample.altitudeFromBarometerM?.let {
-            if (it in minPlausibleBaroAltitudeM..maxPlausibleBaroAltitudeM) it else null
-        }
+        val baro =
+            sample.altitudeFromBarometerM?.let {
+                if (it in minPlausibleBaroAltitudeM..maxPlausibleBaroAltitudeM) it else null
+            }
         val gps = sample.altitudeFromGpsM
 
         return when {
@@ -503,12 +530,20 @@ class RideMetricsCalculator(
                 }
                 baro + baroGpsOffsetM!!
             }
-            baro != null -> baro
-            gps != null -> gps
-            else -> null
+
+            baro != null -> {
+                baro
+            }
+
+            gps != null -> {
+                gps
+            }
+
+            else -> {
+                null
+            }
         }
     }
-
 
     /**
      * Computes a human-readable GPS quality tier from accuracy and satellite count.
@@ -519,7 +554,10 @@ class RideMetricsCalculator(
      * - POOR:  everything else — GPS data may be unreliable; metrics relying on
      *          position deltas should be treated as approximate.
      */
-    private fun computeGpsQuality(accuracyM: Float?, satelliteCount: Int?): GpsQuality {
+    private fun computeGpsQuality(
+        accuracyM: Float?,
+        satelliteCount: Int?,
+    ): GpsQuality {
         val acc = accuracyM?.toDouble() ?: return GpsQuality.POOR
         val sats = satelliteCount ?: 0
         return when {
@@ -533,15 +571,16 @@ class RideMetricsCalculator(
         lat1: Double,
         lon1: Double,
         lat2: Double,
-        lon2: Double
+        lon2: Double,
     ): Double {
         val earthRadiusM = 6_371_000.0
         val dLat = (lat2 - lat1).toRadians()
         val dLon = (lon2 - lon1).toRadians()
 
-        val a = sin(dLat / 2).pow(2) +
-            cos(lat1.toRadians()) * cos(lat2.toRadians()) *
-            sin(dLon / 2).pow(2)
+        val a =
+            sin(dLat / 2).pow(2) +
+                cos(lat1.toRadians()) * cos(lat2.toRadians()) *
+                sin(dLon / 2).pow(2)
 
         val c = 2 * asin(min(1.0, sqrt(a)))
         return earthRadiusM * c

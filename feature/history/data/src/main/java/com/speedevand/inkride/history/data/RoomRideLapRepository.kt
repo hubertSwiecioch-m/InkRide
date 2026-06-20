@@ -10,11 +10,13 @@ import com.speedevand.inkride.core.domain.history.RideLapRepository
 import com.speedevand.inkride.core.domain.tracking.LapRecord
 
 class RoomRideLapRepository(
-    private val dao: RideLapDao
+    private val dao: RideLapDao,
 ) : RideLapRepository {
-
-    override suspend fun saveLaps(rideId: Long, laps: List<LapRecord>): EmptyResult<DataError.Local> {
-        return try {
+    override suspend fun saveLaps(
+        rideId: Long,
+        laps: List<LapRecord>,
+    ): EmptyResult<DataError.Local> =
+        try {
             dao.insertAll(laps.map { it.toEntity(rideId) })
             Result.Success(Unit)
         } catch (e: SQLiteFullException) {
@@ -22,30 +24,30 @@ class RoomRideLapRepository(
         } catch (e: Exception) {
             Result.Error(DataError.Local.UNKNOWN)
         }
-    }
 
-    override suspend fun getLaps(rideId: Long): Result<List<LapRecord>, DataError.Local> {
-        return try {
+    override suspend fun getLaps(rideId: Long): Result<List<LapRecord>, DataError.Local> =
+        try {
             Result.Success(dao.getForRide(rideId).map { it.toDomain() })
         } catch (e: Exception) {
             Result.Error(DataError.Local.UNKNOWN)
         }
-    }
 }
 
-private fun LapRecord.toEntity(rideId: Long) = RideLapEntity(
-    rideId = rideId,
-    lapNumber = lapNumber,
-    distanceKm = distanceKm,
-    movingTimeSeconds = movingTimeSeconds,
-    averageSpeedKmh = averageSpeedKmh,
-    elevationGainM = elevationGainM
-)
+private fun LapRecord.toEntity(rideId: Long) =
+    RideLapEntity(
+        rideId = rideId,
+        lapNumber = lapNumber,
+        distanceKm = distanceKm,
+        movingTimeSeconds = movingTimeSeconds,
+        averageSpeedKmh = averageSpeedKmh,
+        elevationGainM = elevationGainM,
+    )
 
-private fun RideLapEntity.toDomain() = LapRecord(
-    lapNumber = lapNumber,
-    distanceKm = distanceKm,
-    movingTimeSeconds = movingTimeSeconds,
-    averageSpeedKmh = averageSpeedKmh,
-    elevationGainM = elevationGainM
-)
+private fun RideLapEntity.toDomain() =
+    LapRecord(
+        lapNumber = lapNumber,
+        distanceKm = distanceKm,
+        movingTimeSeconds = movingTimeSeconds,
+        averageSpeedKmh = averageSpeedKmh,
+        elevationGainM = elevationGainM,
+    )

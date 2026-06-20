@@ -7,10 +7,10 @@ import com.speedevand.inkride.core.domain.Result
 import org.junit.jupiter.api.Test
 
 class GpxRouteParserTest {
-
     @Test
     fun `parses track points into the follow polyline`() {
-        val gpx = """
+        val gpx =
+            """
             <?xml version="1.0" encoding="UTF-8"?>
             <gpx version="1.1">
               <trk>
@@ -22,7 +22,7 @@ class GpxRouteParserTest {
                 </trkseg>
               </trk>
             </gpx>
-        """.trimIndent()
+            """.trimIndent()
 
         val route = (GpxRouteParser.parse(gpx) as Result.Success).data
 
@@ -33,7 +33,8 @@ class GpxRouteParserTest {
 
     @Test
     fun `falls back to route points when no track exists`() {
-        val gpx = """
+        val gpx =
+            """
             <gpx version="1.1">
               <rte>
                 <name>Planned</name>
@@ -41,7 +42,7 @@ class GpxRouteParserTest {
                 <rtept lat="52.01" lon="21.01"><name>Turn left</name></rtept>
               </rte>
             </gpx>
-        """.trimIndent()
+            """.trimIndent()
 
         val route = (GpxRouteParser.parse(gpx) as Result.Success).data
 
@@ -53,7 +54,8 @@ class GpxRouteParserTest {
 
     @Test
     fun `collects standalone waypoints`() {
-        val gpx = """
+        val gpx =
+            """
             <gpx version="1.1">
               <wpt lat="52.0" lon="21.0"><name>Start</name></wpt>
               <trk><trkseg>
@@ -61,7 +63,7 @@ class GpxRouteParserTest {
                 <trkpt lat="52.01" lon="21.01"/>
               </trkseg></trk>
             </gpx>
-        """.trimIndent()
+            """.trimIndent()
 
         val route = (GpxRouteParser.parse(gpx) as Result.Success).data
 

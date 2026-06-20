@@ -29,20 +29,20 @@ import com.speedevand.inkride.dashboard.presentation.model.RouteProgressUi
 @Composable
 fun RouteStatus(
     route: RouteProgressUi?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     if (route == null) return
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_TINY)
+        verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_TINY),
     ) {
         RoutePrimaryLine(route)
         route.routeName?.let { name ->
             TextMMD(
                 text = stringResource(R.string.dashboard_route_following, name),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.outline,
             )
         }
     }
@@ -58,27 +58,28 @@ fun RouteStatus(
 @Composable
 fun ClearRouteConfirmationSheet(
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
 ) {
     ModalBottomSheetMMD(onDismissRequest = onDismiss) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(DesignConstants.PADDING_LARGE),
-            verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_MEDIUM)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(DesignConstants.PADDING_LARGE),
+            verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_MEDIUM),
         ) {
             TextMMD(
                 text = stringResource(R.string.dashboard_route_clear_title),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
             TextMMD(
                 text = stringResource(R.string.dashboard_route_clear_message),
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_MEDIUM)
+                horizontalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_MEDIUM),
             ) {
                 OutlinedButtonMMD(onClick = onDismiss, modifier = Modifier.weight(1f)) {
                     TextMMD(text = stringResource(R.string.dashboard_goal_cancel))
@@ -94,25 +95,34 @@ fun ClearRouteConfirmationSheet(
 @Composable
 private fun RoutePrimaryLine(route: RouteProgressUi) {
     when {
-        route.offRoute -> TextMMD(
-            text = stringResource(R.string.dashboard_route_off, route.offRouteDistance),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        route.nextTurn != null -> TextMMD(
-            text = route.nextTurnName?.let { name ->
-                stringResource(R.string.dashboard_route_next_turn_named, route.nextTurn, name)
-            } ?: stringResource(R.string.dashboard_route_next_turn, route.nextTurn),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        else -> TextMMD(
-            text = stringResource(R.string.dashboard_route_active),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        route.offRoute -> {
+            TextMMD(
+                text = stringResource(R.string.dashboard_route_off, route.offRouteDistance),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+
+        route.nextTurn != null -> {
+            TextMMD(
+                text =
+                    route.nextTurnName?.let { name ->
+                        stringResource(R.string.dashboard_route_next_turn_named, route.nextTurn, name)
+                    } ?: stringResource(R.string.dashboard_route_next_turn, route.nextTurn),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+
+        else -> {
+            TextMMD(
+                text = stringResource(R.string.dashboard_route_active),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }

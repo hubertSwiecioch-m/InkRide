@@ -6,5 +6,6 @@ import kotlinx.coroutines.flow.Flow
 
 interface UserSettingsRepository {
     fun observeSettings(): Flow<UserSettings>
+
     suspend fun save(settings: UserSettings): EmptyResult<DataError.Local>
 }

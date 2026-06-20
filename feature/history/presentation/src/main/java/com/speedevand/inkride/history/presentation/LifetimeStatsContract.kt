@@ -19,7 +19,7 @@ import java.util.Locale
 @Stable
 data class LifetimeStatsState(
     val stats: LifetimeStatsUi = LifetimeStatsUi(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
 )
 
 data class LifetimeStatsUi(
@@ -28,7 +28,7 @@ data class LifetimeStatsUi(
     val totalMovingTime: String = "0h 0m",
     val totalElevationGain: String = "0 m",
     val maxSpeed: String = "0.0 km/h",
-    val totalCalories: String = "0 kcal"
+    val totalCalories: String = "0 kcal",
 )
 
 sealed interface LifetimeStatsAction {
@@ -52,7 +52,7 @@ fun LifetimeStats.toUi(units: MeasurementUnits = MeasurementUnits.METRIC): Lifet
         totalMovingTime = totalMovingTimeSeconds.toHoursMinutes(),
         totalElevationGain = String.format(Locale.US, "$FORMAT_NO_DECIMALS $altitudeUnit", totalElevationGainM * altitudeFactor),
         maxSpeed = String.format(Locale.US, "$FORMAT_ONE_DECIMAL $speedUnit", maxSpeedKmh * distanceFactor),
-        totalCalories = String.format(Locale.US, "$FORMAT_NO_DECIMALS $UNIT_KCAL", totalCaloriesKcal)
+        totalCalories = String.format(Locale.US, "$FORMAT_NO_DECIMALS $UNIT_KCAL", totalCaloriesKcal),
     )
 }
 

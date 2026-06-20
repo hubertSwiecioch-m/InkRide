@@ -6,7 +6,6 @@ import assertk.assertions.isNull
 import org.junit.jupiter.api.Test
 
 class BleGattTest {
-
     @Test
     fun `parseHeartRate reads an 8-bit value`() {
         val data = byteArrayOf(0x00, 75)

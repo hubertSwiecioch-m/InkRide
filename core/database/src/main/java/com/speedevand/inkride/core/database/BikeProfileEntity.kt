@@ -8,5 +8,5 @@ data class BikeProfileEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val weightKg: Double,
-    val type: String
+    val type: String,
 )

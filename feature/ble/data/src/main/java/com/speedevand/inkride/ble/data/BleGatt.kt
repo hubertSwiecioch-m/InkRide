@@ -4,8 +4,7 @@ import java.util.UUID
 
 /** Standard Bluetooth SIG UUIDs for the GATT profiles InkRide consumes. */
 internal object BleGatt {
-    private fun sig(short: String): UUID =
-        UUID.fromString("0000$short-0000-1000-8000-00805f9b34fb")
+    private fun sig(short: String): UUID = UUID.fromString("0000$short-0000-1000-8000-00805f9b34fb")
 
     // Services
     val HEART_RATE_SERVICE: UUID = sig("180d")
@@ -27,8 +26,11 @@ internal fun parseHeartRate(data: ByteArray): Int? {
     if (data.isEmpty()) return null
     val is16Bit = (data[0].toInt() and 0x01) != 0
     return if (is16Bit) {
-        if (data.size < 3) null
-        else (data[1].toInt() and 0xFF) or ((data[2].toInt() and 0xFF) shl 8)
+        if (data.size < 3) {
+            null
+        } else {
+            (data[1].toInt() and 0xFF) or ((data[2].toInt() and 0xFF) shl 8)
+        }
     } else {
         if (data.size < 2) null else data[1].toInt() and 0xFF
     }
@@ -78,18 +80,24 @@ internal class CscCadenceTracker {
 
         val deltaRevs = (crankRevs - prevRevs + 0x10000) % 0x10000
         val deltaTime = (crankEventTime - prevTime + 0x10000) % 0x10000
-        val cadence = if (deltaTime > 0) {
-            (deltaRevs.toDouble() * 1024.0 * 60.0 / deltaTime.toDouble()).toInt()
-        } else {
-            null
-        }
+        val cadence =
+            if (deltaTime > 0) {
+                (deltaRevs.toDouble() * 1024.0 * 60.0 / deltaTime.toDouble()).toInt()
+            } else {
+                null
+            }
         return CscResult(cadenceRpm = cadence, wheelRevolutions = wheelRevolutions)
     }
 
-    private fun readUint16(data: ByteArray, offset: Int): Int =
-        (data[offset].toInt() and 0xFF) or ((data[offset + 1].toInt() and 0xFF) shl 8)
+    private fun readUint16(
+        data: ByteArray,
+        offset: Int,
+    ): Int = (data[offset].toInt() and 0xFF) or ((data[offset + 1].toInt() and 0xFF) shl 8)
 
-    private fun readUint32(data: ByteArray, offset: Int): Long =
+    private fun readUint32(
+        data: ByteArray,
+        offset: Int,
+    ): Long =
         (data[offset].toLong() and 0xFF) or
             ((data[offset + 1].toLong() and 0xFF) shl 8) or
             ((data[offset + 2].toLong() and 0xFF) shl 16) or
@@ -98,5 +106,5 @@ internal class CscCadenceTracker {
 
 internal data class CscResult(
     val cadenceRpm: Int?,
-    val wheelRevolutions: Long?
+    val wheelRevolutions: Long?,
 )

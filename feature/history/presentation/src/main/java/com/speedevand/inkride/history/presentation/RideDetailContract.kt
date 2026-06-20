@@ -1,23 +1,23 @@
 package com.speedevand.inkride.history.presentation
 
+import android.net.Uri
 import com.speedevand.inkride.core.CoreConstants.DATE_TIME_FORMAT
 import com.speedevand.inkride.core.CoreConstants.FORMAT_NO_DECIMALS
 import com.speedevand.inkride.core.CoreConstants.FORMAT_ONE_DECIMAL
 import com.speedevand.inkride.core.CoreConstants.FORMAT_TWO_DECIMALS
-import com.speedevand.inkride.core.CoreConstants.UNIT_KCAL
-import com.speedevand.inkride.core.toClockString
 import com.speedevand.inkride.core.CoreConstants.UNIT_FT
+import com.speedevand.inkride.core.CoreConstants.UNIT_KCAL
 import com.speedevand.inkride.core.CoreConstants.UNIT_KM
 import com.speedevand.inkride.core.CoreConstants.UNIT_KMH
+import com.speedevand.inkride.core.CoreConstants.UNIT_M
 import com.speedevand.inkride.core.CoreConstants.UNIT_MI
 import com.speedevand.inkride.core.CoreConstants.UNIT_MPH
-import com.speedevand.inkride.core.CoreConstants.UNIT_M
 import com.speedevand.inkride.core.CoreConstants.UNIT_W
-import android.net.Uri
-import com.speedevand.inkride.core.presentation.UiText
 import com.speedevand.inkride.core.domain.history.RideRecord
 import com.speedevand.inkride.core.domain.settings.MeasurementUnits
 import com.speedevand.inkride.core.domain.tracking.LapRecord
+import com.speedevand.inkride.core.presentation.UiText
+import com.speedevand.inkride.core.toClockString
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -26,7 +26,7 @@ data class RideDetailState(
     val ride: RideDetailUi? = null,
     val laps: List<RideLapUi> = emptyList(),
     val trackPoints: List<TrackPointUi> = emptyList(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
 )
 
 /**
@@ -36,14 +36,14 @@ data class RideDetailState(
  */
 data class TrackPointUi(
     val lat: Double,
-    val lng: Double
+    val lng: Double,
 )
 
 data class RideLapUi(
     val lapNumber: String,
     val distance: String,
     val time: String,
-    val averageSpeed: String
+    val averageSpeed: String,
 )
 
 fun LapRecord.toLapUi(units: MeasurementUnits = MeasurementUnits.METRIC): RideLapUi {
@@ -54,7 +54,7 @@ fun LapRecord.toLapUi(units: MeasurementUnits = MeasurementUnits.METRIC): RideLa
         lapNumber = lapNumber.toString(),
         distance = String.format(Locale.US, "$FORMAT_TWO_DECIMALS $distanceUnit", distanceKm * distanceFactor),
         time = movingTimeSeconds.toClockString(),
-        averageSpeed = String.format(Locale.US, "$FORMAT_ONE_DECIMAL $speedUnit", averageSpeedKmh * distanceFactor)
+        averageSpeed = String.format(Locale.US, "$FORMAT_ONE_DECIMAL $speedUnit", averageSpeedKmh * distanceFactor),
     )
 }
 
@@ -69,7 +69,7 @@ data class RideDetailUi(
     val maxSpeedKmh: String,
     val elevationGainM: String,
     val caloriesKcal: String,
-    val averagePowerWatts: String
+    val averagePowerWatts: String,
 )
 
 fun RideRecord.toDetailUi(units: MeasurementUnits = MeasurementUnits.METRIC): RideDetailUi {
@@ -93,18 +93,26 @@ fun RideRecord.toDetailUi(units: MeasurementUnits = MeasurementUnits.METRIC): Ri
         maxSpeedKmh = String.format(Locale.US, "$FORMAT_ONE_DECIMAL $speedUnit", maxSpeedKmh * speedFactor),
         elevationGainM = String.format(Locale.US, "$FORMAT_NO_DECIMALS $altitudeUnit", elevationGainM * altitudeFactor),
         caloriesKcal = String.format(Locale.US, "$FORMAT_NO_DECIMALS $UNIT_KCAL", caloriesKcal),
-        averagePowerWatts = String.format(Locale.US, "$FORMAT_NO_DECIMALS $UNIT_W", averagePowerWatts.toDouble())
+        averagePowerWatts = String.format(Locale.US, "$FORMAT_NO_DECIMALS $UNIT_W", averagePowerWatts.toDouble()),
     )
 }
 
 sealed interface RideDetailAction {
     data object OnDeleteClick : RideDetailAction
+
     data object OnBackClick : RideDetailAction
+
     data object OnExportGpxClick : RideDetailAction
 }
 
 sealed interface RideDetailEvent {
     data object NavigateBack : RideDetailEvent
-    data class ShowError(val message: UiText) : RideDetailEvent
-    data class ShareGpx(val uri: Uri) : RideDetailEvent
+
+    data class ShowError(
+        val message: UiText,
+    ) : RideDetailEvent
+
+    data class ShareGpx(
+        val uri: Uri,
+    ) : RideDetailEvent
 }

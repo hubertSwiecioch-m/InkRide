@@ -17,5 +17,5 @@ data class RideHistoryEntity(
     val caloriesKcal: Double,
     val averagePowerWatts: Int = 0,
     val bikeWeightKg: Double = 10.0,
-    val bikeType: String = "ROAD"
+    val bikeType: String = "ROAD",
 )

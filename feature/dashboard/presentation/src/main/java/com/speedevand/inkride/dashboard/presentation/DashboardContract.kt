@@ -2,13 +2,13 @@ package com.speedevand.inkride.dashboard.presentation
 
 import android.net.Uri
 import androidx.compose.runtime.Stable
-import com.speedevand.inkride.core.presentation.UiText
+import com.speedevand.inkride.core.domain.settings.UserSettings
 import com.speedevand.inkride.core.domain.tracking.RideGoal
+import com.speedevand.inkride.core.presentation.UiText
 import com.speedevand.inkride.dashboard.presentation.model.GoalProgressUi
 import com.speedevand.inkride.dashboard.presentation.model.LapSummaryUi
 import com.speedevand.inkride.dashboard.presentation.model.RideMetricsUi
 import com.speedevand.inkride.dashboard.presentation.model.RouteProgressUi
-import com.speedevand.inkride.core.domain.settings.UserSettings
 
 // Tracking status is owned by the domain RideTracker; re-exported here so the
 // presentation layer keeps a stable, package-local name.
@@ -21,18 +21,32 @@ val TrackingStatus.isActiveRide: Boolean
 
 sealed interface DashboardAction {
     data object OnToggleTrackingClick : DashboardAction
+
     data object OnStopClick : DashboardAction
+
     data object OnResetClick : DashboardAction
+
     data object OnOpenSettingsClick : DashboardAction
+
     data object OnRecordLapClick : DashboardAction
-    data class OnSetGoal(val goal: RideGoal) : DashboardAction
+
+    data class OnSetGoal(
+        val goal: RideGoal,
+    ) : DashboardAction
+
     data object OnClearGoal : DashboardAction
-    data class OnRouteSelected(val uri: Uri) : DashboardAction
+
+    data class OnRouteSelected(
+        val uri: Uri,
+    ) : DashboardAction
+
     data object OnClearRoute : DashboardAction
 }
 
 sealed interface DashboardEvent {
-    data class ShowError(val message: UiText) : DashboardEvent
+    data class ShowError(
+        val message: UiText,
+    ) : DashboardEvent
 }
 
 @Stable
@@ -42,5 +56,5 @@ data class DashboardState(
     val userSettings: UserSettings = UserSettings(weightKg = 75, age = 30),
     val lastLap: LapSummaryUi? = null,
     val goal: GoalProgressUi? = null,
-    val route: RouteProgressUi? = null
+    val route: RouteProgressUi? = null,
 )

@@ -40,7 +40,7 @@ class PowerEstimator {
         speedMps: Double,
         accelerationMps2: Double,
         gradePercent: Double,
-        userSettings: UserSettings
+        userSettings: UserSettings,
     ): Int {
         if (speedMps <= 0.1) return 0
 
@@ -60,11 +60,12 @@ class PowerEstimator {
         //   Gravel (38mm @40psi):                  0.006-0.010
         //   MTB (2.2" @25psi, dirt):              0.008-0.015
         //   City (35mm @60psi, mixed surface):    0.006-0.010
-        val crr = when (userSettings.bikeType) {
-            BikeType.ROAD -> 0.005
-            BikeType.MTB -> 0.012
-            BikeType.CITY -> 0.008
-        }
+        val crr =
+            when (userSettings.bikeType) {
+                BikeType.ROAD -> 0.005
+                BikeType.MTB -> 0.012
+                BikeType.CITY -> 0.008
+            }
         val pRolling = crr * totalMassKg * gravity * speedMps * cos(slopeAngleRad)
 
         // 2. Air Resistance
@@ -79,11 +80,12 @@ class PowerEstimator {
         //
         // Our values assume typical on-hoods / moderate-upright position.
         // Wind is the dominant unmeasured variable here.
-        val cda = when (userSettings.bikeType) {
-            BikeType.ROAD -> 0.32
-            BikeType.MTB -> 0.45
-            BikeType.CITY -> 0.40
-        }
+        val cda =
+            when (userSettings.bikeType) {
+                BikeType.ROAD -> 0.32
+                BikeType.MTB -> 0.45
+                BikeType.CITY -> 0.40
+            }
         val pAir = 0.5 * cda * airDensity * (speedMps * speedMps * speedMps)
 
         // 3. Gravity

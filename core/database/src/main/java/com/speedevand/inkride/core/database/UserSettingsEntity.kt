@@ -28,5 +28,5 @@ data class UserSettingsEntity(
     val maxSpeedAlertKmh: Double? = null,
     val hrZoneMinBpm: Int? = null,
     val hrZoneMaxBpm: Int? = null,
-    val activeBikeProfileId: Long? = null
+    val activeBikeProfileId: Long? = null,
 )

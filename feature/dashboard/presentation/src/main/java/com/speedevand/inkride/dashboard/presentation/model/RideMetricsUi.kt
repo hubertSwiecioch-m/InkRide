@@ -1,14 +1,14 @@
 package com.speedevand.inkride.dashboard.presentation.model
 
-import com.speedevand.inkride.core.toClockString
+import com.speedevand.inkride.core.domain.settings.MeasurementUnits
 import com.speedevand.inkride.core.domain.tracking.GpsQuality
 import com.speedevand.inkride.core.domain.tracking.RideMetrics
 import com.speedevand.inkride.core.domain.tracking.WeatherTrend
+import com.speedevand.inkride.core.toClockString
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.DISTANCE_ZERO
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.KM_TO_MI_FACTOR
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.M_TO_FT_FACTOR
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.TIME_ZERO
-import com.speedevand.inkride.core.domain.settings.MeasurementUnits
 import java.util.Locale
 
 data class RideMetricsUi(
@@ -32,14 +32,14 @@ data class RideMetricsUi(
     val weatherTrend: WeatherTrend = WeatherTrend.UNKNOWN,
     val speedUnit: String = "km/h",
     val distanceUnit: String = "km",
-    val altitudeUnit: String = "m"
+    val altitudeUnit: String = "m",
 )
 
 fun RideMetrics.toRideMetricsUi(units: MeasurementUnits = MeasurementUnits.METRIC): RideMetricsUi {
     val speedFactor = if (units == MeasurementUnits.IMPERIAL) KM_TO_MI_FACTOR else 1.0
     val distanceFactor = if (units == MeasurementUnits.IMPERIAL) KM_TO_MI_FACTOR else 1.0
     val altitudeFactor = if (units == MeasurementUnits.IMPERIAL) M_TO_FT_FACTOR else 1.0
-    
+
     return RideMetricsUi(
         currentSpeedKmh = (currentSpeedKmh * speedFactor).format(1),
         averageSpeedKmh = (averageSpeedKmh * speedFactor).format(1),
@@ -59,7 +59,7 @@ fun RideMetrics.toRideMetricsUi(units: MeasurementUnits = MeasurementUnits.METRI
         weatherTrend = weatherTrend,
         speedUnit = if (units == MeasurementUnits.IMPERIAL) "mph" else "km/h",
         distanceUnit = if (units == MeasurementUnits.IMPERIAL) "mi" else "km",
-        altitudeUnit = if (units == MeasurementUnits.IMPERIAL) "ft" else "m"
+        altitudeUnit = if (units == MeasurementUnits.IMPERIAL) "ft" else "m",
     )
 }
 
@@ -68,12 +68,17 @@ private fun Double.format(decimals: Int): String {
     return String.format(Locale.US, format, this)
 }
 
-private fun formatGpsQuality(quality: GpsQuality, accuracyM: Double?, factor: Double): String {
-    val label = when (quality) {
-        GpsQuality.GOOD -> "Good"
-        GpsQuality.FAIR -> "Fair"
-        GpsQuality.POOR -> "Poor"
-    }
+private fun formatGpsQuality(
+    quality: GpsQuality,
+    accuracyM: Double?,
+    factor: Double,
+): String {
+    val label =
+        when (quality) {
+            GpsQuality.GOOD -> "Good"
+            GpsQuality.FAIR -> "Fair"
+            GpsQuality.POOR -> "Poor"
+        }
     val accStr = accuracyM?.let { "${(it * factor).format(1)} m" } ?: "--"
     return "$label ($accStr)"
 }

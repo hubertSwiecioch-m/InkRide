@@ -29,7 +29,7 @@ import java.io.File
 @Composable
 fun RideRouteMap(
     points: List<TrackPointUi>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val geoPoints = remember(points) { points.map { GeoPoint(it.lat, it.lng) } }
 
@@ -57,24 +57,28 @@ fun RideRouteMap(
                 // returning false leaves OsmDroid's own onTouchEvent handling intact.
                 setOnTouchListener { view, event ->
                     when (event.actionMasked) {
-                        MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE ->
+                        MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
                             view.parent?.requestDisallowInterceptTouchEvent(true)
-                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                        }
+
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                             view.parent?.requestDisallowInterceptTouchEvent(false)
+                        }
                     }
                     false
                 }
 
                 // Grayscale tiles for E-Ink legibility.
                 overlayManager.tilesOverlay.setColorFilter(
-                    ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
+                    ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) }),
                 )
 
-                val route = Polyline(this).apply {
-                    setPoints(geoPoints)
-                    outlinePaint.color = Color.BLACK
-                    outlinePaint.strokeWidth = 8f
-                }
+                val route =
+                    Polyline(this).apply {
+                        setPoints(geoPoints)
+                        outlinePaint.color = Color.BLACK
+                        outlinePaint.strokeWidth = 8f
+                    }
                 overlays.add(route)
 
                 // Frame the whole track once the view has been measured.
@@ -88,7 +92,7 @@ fun RideRouteMap(
             route?.setPoints(geoPoints)
             mapView.invalidate()
         },
-        onRelease = { it.onDetach() }
+        onRelease = { it.onDetach() },
     )
 }
 

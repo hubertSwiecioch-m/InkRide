@@ -1,11 +1,14 @@
 package com.speedevand.inkride.core.domain.settings
 
 enum class MeasurementUnits {
-    METRIC, IMPERIAL
+    METRIC,
+    IMPERIAL,
 }
 
 enum class BikeType {
-    ROAD, MTB, CITY
+    ROAD,
+    MTB,
+    CITY,
 }
 
 data class UserSettings(
@@ -34,5 +37,5 @@ data class UserSettings(
     // Active bike profile; when set and resolvable, its weight/type drive the
     // metric estimators (see [bikeWeightKg]/[bikeType], which are populated from
     // it). Null falls back to the flat [bikeWeightKg]/[bikeType] defaults.
-    val activeBikeProfileId: Long? = null
+    val activeBikeProfileId: Long? = null,
 )

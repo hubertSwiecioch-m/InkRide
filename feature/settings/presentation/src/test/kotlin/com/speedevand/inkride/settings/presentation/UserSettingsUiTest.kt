@@ -8,7 +8,6 @@ import com.speedevand.inkride.core.domain.settings.UserSettings
 import org.junit.jupiter.api.Test
 
 class UserSettingsUiTest {
-
     @Test
     fun `toUserSettingsUi converts metric correctly`() {
         val settings = UserSettings(weightKg = 75, age = 30, bikeWeightKg = 10.0, units = MeasurementUnits.METRIC)
