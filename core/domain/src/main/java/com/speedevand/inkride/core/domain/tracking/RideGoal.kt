@@ -6,6 +6,11 @@ package com.speedevand.inkride.core.domain.tracking
  * the ride stops.
  */
 sealed interface RideGoal {
-    data class Distance(val targetKm: Double) : RideGoal
-    data class Duration(val targetSeconds: Long) : RideGoal
+    data class Distance(
+        val targetKm: Double,
+    ) : RideGoal
+
+    data class Duration(
+        val targetSeconds: Long,
+    ) : RideGoal
 }

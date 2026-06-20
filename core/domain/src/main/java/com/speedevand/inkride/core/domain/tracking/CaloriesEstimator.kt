@@ -26,7 +26,7 @@ class CaloriesEstimator {
         speedKmh: Double,
         intervalMs: Long,
         userSettings: UserSettings,
-        gradePercent: Double = 0.0
+        gradePercent: Double = 0.0,
     ): Double {
         if (intervalMs <= 0L || speedKmh <= 0.0) return 0.0
 
@@ -55,15 +55,16 @@ class CaloriesEstimator {
      */
     private fun speedToMet(speedKmh: Double): Double {
         // Anchor points: (speedKmh, MET)
-        val brackets = listOf(
-            0.0 to 2.0,    // stationary = resting ~2 MET (bike handling baseline)
-            16.0 to 4.0,   // leisure
-            19.0 to 6.8,   // moderate
-            22.0 to 8.0,   // vigorous
-            25.0 to 10.0,  // very vigorous
-            30.0 to 12.0,  // racing
-            35.0 to 14.0   // competitive
-        )
+        val brackets =
+            listOf(
+                0.0 to 2.0, // stationary = resting ~2 MET (bike handling baseline)
+                16.0 to 4.0, // leisure
+                19.0 to 6.8, // moderate
+                22.0 to 8.0, // vigorous
+                25.0 to 10.0, // very vigorous
+                30.0 to 12.0, // racing
+                35.0 to 14.0, // competitive
+            )
 
         // Clamp to range
         if (speedKmh <= brackets.first().first) return brackets.first().second
@@ -95,7 +96,11 @@ class CaloriesEstimator {
      * 15 km/h sees roughly double the flat-ground calorie burn, which aligns
      * with published cycling energy expenditure data.
      */
-    private fun gradeFactor(gradePercent: Double, speedKmh: Double, userSettings: UserSettings): Double {
+    private fun gradeFactor(
+        gradePercent: Double,
+        speedKmh: Double,
+        userSettings: UserSettings,
+    ): Double {
         if (gradePercent == 0.0) return 1.0
 
         // Total mass (rider + bike)
@@ -120,10 +125,11 @@ class CaloriesEstimator {
         return (totalMetabolicWatts / flatMetabolicWatts).coerceIn(0.5, 3.0)
     }
 
-    private fun ageFactor(age: Int): Double = when {
-        age < 30 -> 1.0
-        age < 45 -> 0.97
-        age < 60 -> 0.94
-        else -> 0.9
-    }
+    private fun ageFactor(age: Int): Double =
+        when {
+            age < 30 -> 1.0
+            age < 45 -> 0.97
+            age < 60 -> 0.94
+            else -> 0.9
+        }
 }

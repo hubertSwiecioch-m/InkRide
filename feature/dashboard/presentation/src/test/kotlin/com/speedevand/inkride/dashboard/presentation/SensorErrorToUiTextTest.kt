@@ -6,7 +6,6 @@ import com.speedevand.inkride.core.domain.tracking.SensorError
 import org.junit.jupiter.api.Test
 
 class SensorErrorToUiTextTest {
-
     @Test
     fun `LOCATION_DENIED maps to correct string resource`() {
         val result = SensorError.Permission.LOCATION_DENIED.toUiText()

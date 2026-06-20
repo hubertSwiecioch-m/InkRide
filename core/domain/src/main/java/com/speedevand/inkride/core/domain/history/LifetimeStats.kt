@@ -7,5 +7,5 @@ data class LifetimeStats(
     val totalMovingTimeSeconds: Long = 0L,
     val totalElevationGainM: Double = 0.0,
     val maxSpeedKmh: Double = 0.0,
-    val totalCaloriesKcal: Double = 0.0
+    val totalCaloriesKcal: Double = 0.0,
 )

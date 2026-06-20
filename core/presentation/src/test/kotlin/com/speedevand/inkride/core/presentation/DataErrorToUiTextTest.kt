@@ -6,7 +6,6 @@ import com.speedevand.inkride.core.domain.DataError
 import org.junit.jupiter.api.Test
 
 class DataErrorToUiTextTest {
-
     @Test
     fun `NO_INTERNET maps to correct string resource`() {
         val result = DataError.Network.NO_INTERNET.toUiText()

@@ -9,15 +9,19 @@ import androidx.room.RoomDatabase
         RideHistoryEntity::class,
         RideTrackPointEntity::class,
         RideLapEntity::class,
-        BikeProfileEntity::class
+        BikeProfileEntity::class,
     ],
     version = 6,
-    exportSchema = false
+    exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userSettingsDao(): UserSettingsDao
+
     abstract fun rideHistoryDao(): RideHistoryDao
+
     abstract fun rideTrackPointDao(): RideTrackPointDao
+
     abstract fun rideLapDao(): RideLapDao
+
     abstract fun bikeProfileDao(): BikeProfileDao
 }

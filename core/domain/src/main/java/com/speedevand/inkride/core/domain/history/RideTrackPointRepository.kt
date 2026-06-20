@@ -10,6 +10,10 @@ import com.speedevand.inkride.core.domain.Result
  * a foreign key with cascade delete, so removing a ride also removes its track.
  */
 interface RideTrackPointRepository {
-    suspend fun savePoints(rideId: Long, points: List<RideTrackPoint>): EmptyResult<DataError.Local>
+    suspend fun savePoints(
+        rideId: Long,
+        points: List<RideTrackPoint>,
+    ): EmptyResult<DataError.Local>
+
     suspend fun getPoints(rideId: Long): Result<List<RideTrackPoint>, DataError.Local>
 }

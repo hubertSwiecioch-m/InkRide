@@ -28,7 +28,10 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 
 enum class TrackingStatus {
-    IDLE, TRACKING, PAUSED, AUTO_PAUSED
+    IDLE,
+    TRACKING,
+    PAUSED,
+    AUTO_PAUSED,
 }
 
 data class TrackingState(
@@ -39,7 +42,7 @@ data class TrackingState(
     // Loaded GPX route the rider is following, and their live progress along it.
     // Both null when no route is loaded.
     val activeRoute: PlannedRoute? = null,
-    val routeProgress: RouteProgress? = null
+    val routeProgress: RouteProgress? = null,
 )
 
 /**
@@ -74,7 +77,7 @@ class RideTracker(
     private val autoPauseSpeedKmh: Double = 1.5,
     private val autoResumeSpeedKmh: Double = 2.5,
     private val autoPauseDelayMs: Long = 3_000L,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val _state = MutableStateFlow(TrackingState())
     val state: StateFlow<TrackingState> = _state.asStateFlow()
@@ -137,13 +140,19 @@ class RideTracker(
     /** Starts a new ride from idle, or resumes a paused one. No-op while tracking. */
     fun start() {
         when (_state.value.status) {
-            TrackingStatus.TRACKING -> Unit
+            TrackingStatus.TRACKING -> {
+                Unit
+            }
+
             TrackingStatus.PAUSED, TrackingStatus.AUTO_PAUSED -> {
                 lowSpeedSinceMs = null
                 resetAlertState()
                 _state.update { it.copy(status = TrackingStatus.TRACKING) }
             }
-            TrackingStatus.IDLE -> startNewSession()
+
+            TrackingStatus.IDLE -> {
+                startNewSession()
+            }
         }
     }
 
@@ -211,14 +220,15 @@ class RideTracker(
         val current = _state.value
         // Close the in-progress segment into a final lap so the breakdown covers
         // the whole ride — but only when the rider actually used laps.
-        val laps = if (
-            current.laps.isNotEmpty() &&
-            current.metrics.distanceKm - lapBaselineDistanceKm >= minLapDistanceKm
-        ) {
-            current.laps + buildLap(current.metrics, current.laps.size + 1)
-        } else {
-            current.laps
-        }
+        val laps =
+            if (
+                current.laps.isNotEmpty() &&
+                current.metrics.distanceKm - lapBaselineDistanceKm >= minLapDistanceKm
+            ) {
+                current.laps + buildLap(current.metrics, current.laps.size + 1)
+            } else {
+                current.laps
+            }
         saveRide(current.metrics, sessionStartMs, laps)
         collectJob?.cancel()
         collectJob = null
@@ -233,7 +243,8 @@ class RideTracker(
     }
 
     private fun startNewSession() {
-        sensorDataSource.start()
+        sensorDataSource
+            .start()
             .onFailure { _errors.tryEmit(it) }
             .onSuccess {
                 // Preserve a goal/route the rider set before starting; laps always reset.
@@ -246,11 +257,12 @@ class RideTracker(
                 resetAlertState()
                 resetLapBaseline()
                 synchronized(trackPointsLock) { trackPoints.clear() }
-                _state.value = TrackingState(
-                    status = TrackingStatus.TRACKING,
-                    activeGoal = goal,
-                    activeRoute = route
-                )
+                _state.value =
+                    TrackingState(
+                        status = TrackingStatus.TRACKING,
+                        activeGoal = goal,
+                        activeRoute = route,
+                    )
                 launchCollection()
             }
     }
@@ -261,7 +273,10 @@ class RideTracker(
         lapBaselineElevationGainM = 0.0
     }
 
-    private fun buildLap(metrics: RideMetrics, lapNumber: Int): LapRecord {
+    private fun buildLap(
+        metrics: RideMetrics,
+        lapNumber: Int,
+    ): LapRecord {
         val distanceKm = (metrics.distanceKm - lapBaselineDistanceKm).coerceAtLeast(0.0)
         val movingSeconds = (metrics.movingTimeSeconds - lapBaselineMovingTimeSeconds).coerceAtLeast(0L)
         val elevationGainM = (metrics.elevationGainM - lapBaselineElevationGainM).coerceAtLeast(0.0)
@@ -271,7 +286,7 @@ class RideTracker(
             distanceKm = distanceKm,
             movingTimeSeconds = movingSeconds,
             averageSpeedKmh = avgSpeedKmh,
-            elevationGainM = elevationGainM
+            elevationGainM = elevationGainM,
         )
     }
 
@@ -280,7 +295,11 @@ class RideTracker(
      * actively TRACKING are recorded, so pauses (manual or auto) leave clean
      * gaps in the exported GPX rather than clusters of stationary points.
      */
-    private fun recordTrackPoint(status: TrackingStatus, sample: RideSensorSample, metrics: RideMetrics) {
+    private fun recordTrackPoint(
+        status: TrackingStatus,
+        sample: RideSensorSample,
+        metrics: RideMetrics,
+    ) {
         if (status != TrackingStatus.TRACKING) return
         val lat = sample.latitude ?: return
         val lng = sample.longitude ?: return
@@ -291,91 +310,105 @@ class RideTracker(
                     latitude = lat,
                     longitude = lng,
                     altitudeM = metrics.altitudeM,
-                    accuracyM = sample.accuracyM
-                )
+                    accuracyM = sample.accuracyM,
+                ),
             )
         }
     }
 
     private fun launchCollection() {
         collectJob?.cancel()
-        collectJob = scope.launch {
-            val settingsJob = launch {
-                userSettingsRepository.observeSettings().collect { latestSettings = it }
-            }
-            // Drive (re)connection only off the paired-address pair, not the whole
-            // settings object — so unrelated edits (units, visible metrics) don't
-            // touch the GATT layer.
-            val bleConnectJob = launch {
-                userSettingsRepository.observeSettings()
-                    .map { it.pairedHrmAddress to it.pairedCadenceAddress }
-                    .distinctUntilChanged()
-                    .collect { (hrm, cadence) -> bleSensorDataSource.connect(hrm, cadence) }
-            }
-            // BLE notifications arrive independently of GPS fixes; fold each new
-            // sample straight into the published metrics so HR/cadence stay live
-            // even during a GPS dropout or while stationary.
-            val bleJob = launch {
-                bleSensorDataSource.observeSamples().collect { ble ->
-                    latestBle = ble
-                    val updated = _state.updateAndGet { current ->
-                        if (current.status == TrackingStatus.IDLE) current
-                        else current.copy(
-                            metrics = current.metrics.copy(
-                                heartRateBpm = ble.heartRateBpm,
-                                cadenceRpm = ble.cadenceRpm
+        collectJob =
+            scope.launch {
+                val settingsJob =
+                    launch {
+                        userSettingsRepository.observeSettings().collect { latestSettings = it }
+                    }
+                // Drive (re)connection only off the paired-address pair, not the whole
+                // settings object — so unrelated edits (units, visible metrics) don't
+                // touch the GATT layer.
+                val bleConnectJob =
+                    launch {
+                        userSettingsRepository
+                            .observeSettings()
+                            .map { it.pairedHrmAddress to it.pairedCadenceAddress }
+                            .distinctUntilChanged()
+                            .collect { (hrm, cadence) -> bleSensorDataSource.connect(hrm, cadence) }
+                    }
+                // BLE notifications arrive independently of GPS fixes; fold each new
+                // sample straight into the published metrics so HR/cadence stay live
+                // even during a GPS dropout or while stationary.
+                val bleJob =
+                    launch {
+                        bleSensorDataSource.observeSamples().collect { ble ->
+                            latestBle = ble
+                            val updated =
+                                _state.updateAndGet { current ->
+                                    if (current.status == TrackingStatus.IDLE) {
+                                        current
+                                    } else {
+                                        current.copy(
+                                            metrics =
+                                                current.metrics.copy(
+                                                    heartRateBpm = ble.heartRateBpm,
+                                                    cadenceRpm = ble.cadenceRpm,
+                                                ),
+                                        )
+                                    }
+                                }
+                            // HR alerts can fire from a BLE notification alone, with no
+                            // intervening GPS fix.
+                            evaluateAlerts(updated.status, updated.metrics)
+                        }
+                    }
+                try {
+                    sensorDataSource.observeSamples().collect { sample ->
+                        val statusBefore = _state.value.status
+                        if (statusBefore == TrackingStatus.IDLE) return@collect
+                        val isPaused =
+                            statusBefore == TrackingStatus.PAUSED ||
+                                statusBefore == TrackingStatus.AUTO_PAUSED
+                        val baseMetrics =
+                            metricsCalculator.process(
+                                sample = sample,
+                                userSettings = latestSettings,
+                                isPaused = isPaused,
                             )
-                        )
+                        // Fold the latest BLE reading into the published metrics; the
+                        // calculator stays GPS-only.
+                        val ble = latestBle
+                        val metrics =
+                            if (ble != null) {
+                                baseMetrics.copy(heartRateBpm = ble.heartRateBpm, cadenceRpm = ble.cadenceRpm)
+                            } else {
+                                baseMetrics
+                            }
+                        val autoStatus = evaluateAutoPause(statusBefore, metrics.currentSpeedKmh, sample.timestampMs)
+                        // Recompute route-follow progress from this fix; carry the
+                        // previous value forward on a fix-less sample so the readout
+                        // doesn't flicker between GPS updates.
+                        val progress = evaluateRoute(sample)
+                        // A manual start/pause/resume/stop may have landed on the caller
+                        // thread since statusBefore was read. Only apply the auto-pause
+                        // decision when the status is unchanged, and never write over a
+                        // stop() that reset us to IDLE — so the rider's explicit command
+                        // is never clobbered by this (asynchronous) sample.
+                        val newState =
+                            _state.updateAndGet { current ->
+                                if (current.status == TrackingStatus.IDLE) return@updateAndGet current
+                                val resolved = if (current.status == statusBefore) autoStatus else current.status
+                                current.copy(status = resolved, metrics = metrics, routeProgress = progress)
+                            }
+                        recordTrackPoint(newState.status, sample, metrics)
+                        evaluateAlerts(newState.status, newState.metrics)
+                        evaluateOffRoute(newState.status, newState.routeProgress)
                     }
-                    // HR alerts can fire from a BLE notification alone, with no
-                    // intervening GPS fix.
-                    evaluateAlerts(updated.status, updated.metrics)
+                } finally {
+                    settingsJob.cancel()
+                    bleConnectJob.cancel()
+                    bleJob.cancel()
                 }
             }
-            try {
-                sensorDataSource.observeSamples().collect { sample ->
-                    val statusBefore = _state.value.status
-                    if (statusBefore == TrackingStatus.IDLE) return@collect
-                    val isPaused = statusBefore == TrackingStatus.PAUSED ||
-                        statusBefore == TrackingStatus.AUTO_PAUSED
-                    val baseMetrics = metricsCalculator.process(
-                        sample = sample,
-                        userSettings = latestSettings,
-                        isPaused = isPaused
-                    )
-                    // Fold the latest BLE reading into the published metrics; the
-                    // calculator stays GPS-only.
-                    val ble = latestBle
-                    val metrics = if (ble != null) {
-                        baseMetrics.copy(heartRateBpm = ble.heartRateBpm, cadenceRpm = ble.cadenceRpm)
-                    } else {
-                        baseMetrics
-                    }
-                    val autoStatus = evaluateAutoPause(statusBefore, metrics.currentSpeedKmh, sample.timestampMs)
-                    // Recompute route-follow progress from this fix; carry the
-                    // previous value forward on a fix-less sample so the readout
-                    // doesn't flicker between GPS updates.
-                    val progress = evaluateRoute(sample)
-                    // A manual start/pause/resume/stop may have landed on the caller
-                    // thread since statusBefore was read. Only apply the auto-pause
-                    // decision when the status is unchanged, and never write over a
-                    // stop() that reset us to IDLE — so the rider's explicit command
-                    // is never clobbered by this (asynchronous) sample.
-                    val newState = _state.updateAndGet { current ->
-                        if (current.status == TrackingStatus.IDLE) return@updateAndGet current
-                        val resolved = if (current.status == statusBefore) autoStatus else current.status
-                        current.copy(status = resolved, metrics = metrics, routeProgress = progress)
-                    }
-                    recordTrackPoint(newState.status, sample, metrics)
-                    evaluateAlerts(newState.status, newState.metrics)
-                    evaluateOffRoute(newState.status, newState.routeProgress)
-                }
-            } finally {
-                settingsJob.cancel()
-                bleConnectJob.cancel()
-                bleJob.cancel()
-            }
-        }
     }
 
     /**
@@ -387,34 +420,40 @@ class RideTracker(
     private fun evaluateAutoPause(
         current: TrackingStatus,
         speedKmh: Double,
-        nowMs: Long
-    ): TrackingStatus = when (current) {
-        TrackingStatus.TRACKING -> {
-            if (speedKmh < autoPauseSpeedKmh) {
-                val since = lowSpeedSinceMs ?: nowMs.also { lowSpeedSinceMs = it }
-                if (nowMs - since >= autoPauseDelayMs) {
-                    lowSpeedSinceMs = null
-                    TrackingStatus.AUTO_PAUSED
+        nowMs: Long,
+    ): TrackingStatus =
+        when (current) {
+            TrackingStatus.TRACKING -> {
+                if (speedKmh < autoPauseSpeedKmh) {
+                    val since = lowSpeedSinceMs ?: nowMs.also { lowSpeedSinceMs = it }
+                    if (nowMs - since >= autoPauseDelayMs) {
+                        lowSpeedSinceMs = null
+                        TrackingStatus.AUTO_PAUSED
+                    } else {
+                        current
+                    }
                 } else {
+                    lowSpeedSinceMs = null
                     current
                 }
-            } else {
-                lowSpeedSinceMs = null
+            }
+
+            TrackingStatus.AUTO_PAUSED -> {
+                if (speedKmh > autoResumeSpeedKmh) TrackingStatus.TRACKING else current
+            }
+
+            else -> {
                 current
             }
         }
-        TrackingStatus.AUTO_PAUSED -> {
-            if (speedKmh > autoResumeSpeedKmh) TrackingStatus.TRACKING else current
-        }
-        else -> current
-    }
 
-    private fun resetAlertState() = synchronized(alertLock) {
-        wasOverSpeed = false
-        wasHrHigh = false
-        wasHrLow = false
-        wasOffRoute = false
-    }
+    private fun resetAlertState() =
+        synchronized(alertLock) {
+            wasOverSpeed = false
+            wasHrHigh = false
+            wasHrLow = false
+            wasOffRoute = false
+        }
 
     /**
      * Emits an alert the first time a live metric crosses a configured threshold
@@ -422,7 +461,10 @@ class RideTracker(
      * every sample. Alerts only fire while actively TRACKING; any other status
      * (paused/idle) clears the latches so the next active crossing re-arms.
      */
-    private fun evaluateAlerts(status: TrackingStatus, metrics: RideMetrics) {
+    private fun evaluateAlerts(
+        status: TrackingStatus,
+        metrics: RideMetrics,
+    ) {
         val config = latestSettings.alerts
         synchronized(alertLock) {
             if (status != TrackingStatus.TRACKING || !config.hasAny) {
@@ -480,7 +522,10 @@ class RideTracker(
      * beyond the threshold, re-arming after they return. Only fires while
      * actively TRACKING; any other status clears the latch.
      */
-    private fun evaluateOffRoute(status: TrackingStatus, progress: RouteProgress?) {
+    private fun evaluateOffRoute(
+        status: TrackingStatus,
+        progress: RouteProgress?,
+    ) {
         synchronized(alertLock) {
             if (status != TrackingStatus.TRACKING || progress == null) {
                 wasOffRoute = false
@@ -492,41 +537,47 @@ class RideTracker(
         }
     }
 
-    private fun saveRide(metrics: RideMetrics, startedAt: Long, laps: List<LapRecord>) {
+    private fun saveRide(
+        metrics: RideMetrics,
+        startedAt: Long,
+        laps: List<LapRecord>,
+    ) {
         // Snapshot and clear the track buffer up front (synchronously, before the
         // collection job is cancelled) so a too-short ride still drops its points
         // and the next ride starts clean.
-        val points = synchronized(trackPointsLock) {
-            ArrayList(trackPoints).also { trackPoints.clear() }
-        }
+        val points =
+            synchronized(trackPointsLock) {
+                ArrayList(trackPoints).also { trackPoints.clear() }
+            }
         if (metrics.distanceKm < minSaveDistanceKm) return
         val endedAt = System.currentTimeMillis()
         val settings = latestSettings
         scope.launch {
-            historyRepository.save(
-                RideRecord(
-                    id = 0L,
-                    startTimestamp = startedAt,
-                    endTimestamp = endedAt,
-                    distanceKm = metrics.distanceKm,
-                    movingTimeSeconds = metrics.movingTimeSeconds,
-                    elapsedTimeSeconds = metrics.elapsedTimeSeconds,
-                    averageSpeedKmh = metrics.averageSpeedKmh,
-                    maxSpeedKmh = metrics.maxSpeedKmh,
-                    elevationGainM = metrics.elevationGainM,
-                    caloriesKcal = metrics.caloriesKcal,
-                    averagePowerWatts = metrics.averagePowerWatts,
-                    bikeWeightKg = settings.bikeWeightKg,
-                    bikeType = settings.bikeType
-                )
-            ).onSuccess { rideId ->
-                if (points.isNotEmpty()) {
-                    trackPointRepository.savePoints(rideId, points)
+            historyRepository
+                .save(
+                    RideRecord(
+                        id = 0L,
+                        startTimestamp = startedAt,
+                        endTimestamp = endedAt,
+                        distanceKm = metrics.distanceKm,
+                        movingTimeSeconds = metrics.movingTimeSeconds,
+                        elapsedTimeSeconds = metrics.elapsedTimeSeconds,
+                        averageSpeedKmh = metrics.averageSpeedKmh,
+                        maxSpeedKmh = metrics.maxSpeedKmh,
+                        elevationGainM = metrics.elevationGainM,
+                        caloriesKcal = metrics.caloriesKcal,
+                        averagePowerWatts = metrics.averagePowerWatts,
+                        bikeWeightKg = settings.bikeWeightKg,
+                        bikeType = settings.bikeType,
+                    ),
+                ).onSuccess { rideId ->
+                    if (points.isNotEmpty()) {
+                        trackPointRepository.savePoints(rideId, points)
+                    }
+                    if (laps.isNotEmpty()) {
+                        lapRepository.saveLaps(rideId, laps)
+                    }
                 }
-                if (laps.isNotEmpty()) {
-                    lapRepository.saveLaps(rideId, laps)
-                }
-            }
         }
     }
 }

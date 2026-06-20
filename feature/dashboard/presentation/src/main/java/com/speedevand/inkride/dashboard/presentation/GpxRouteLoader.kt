@@ -18,7 +18,7 @@ enum class GpxLoadError : Error {
     EMPTY,
 
     /** The file was not well-formed GPX. */
-    MALFORMED
+    MALFORMED,
 }
 
 /**
@@ -32,27 +32,32 @@ interface GpxRouteLoader {
 
 /** Reads the picked document via [Context]'s content resolver, then parses it. */
 class AndroidGpxRouteLoader(
-    private val context: Context
+    private val context: Context,
 ) : GpxRouteLoader {
-
     override suspend fun load(uri: Uri): Result<PlannedRoute, GpxLoadError> =
         withContext(Dispatchers.IO) {
-            val xml = try {
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    stream.readBytes().toString(Charsets.UTF_8)
-                } ?: return@withContext Result.Error(GpxLoadError.READ_FAILED)
-            } catch (e: Exception) {
-                return@withContext Result.Error(GpxLoadError.READ_FAILED)
-            }
+            val xml =
+                try {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        stream.readBytes().toString(Charsets.UTF_8)
+                    } ?: return@withContext Result.Error(GpxLoadError.READ_FAILED)
+                } catch (e: Exception) {
+                    return@withContext Result.Error(GpxLoadError.READ_FAILED)
+                }
 
             when (val parsed = GpxRouteParser.parse(xml)) {
-                is Result.Success -> Result.Success(parsed.data)
-                is Result.Error -> Result.Error(
-                    when (parsed.error) {
-                        GpxParseError.EMPTY -> GpxLoadError.EMPTY
-                        GpxParseError.MALFORMED -> GpxLoadError.MALFORMED
-                    }
-                )
+                is Result.Success -> {
+                    Result.Success(parsed.data)
+                }
+
+                is Result.Error -> {
+                    Result.Error(
+                        when (parsed.error) {
+                            GpxParseError.EMPTY -> GpxLoadError.EMPTY
+                            GpxParseError.MALFORMED -> GpxLoadError.MALFORMED
+                        },
+                    )
+                }
             }
         }
 }

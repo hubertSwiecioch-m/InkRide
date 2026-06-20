@@ -14,14 +14,17 @@ plugins {
 // or a local, git-ignored `keystore.properties` file. When nothing is configured
 // the release build falls back to debug signing so a local `assembleRelease` still works.
 val keystorePropertiesFile = rootProject.file("keystore.properties")
-val keystoreProperties = Properties().apply {
-    if (keystorePropertiesFile.exists()) {
-        FileInputStream(keystorePropertiesFile).use { load(it) }
+val keystoreProperties =
+    Properties().apply {
+        if (keystorePropertiesFile.exists()) {
+            FileInputStream(keystorePropertiesFile).use { load(it) }
+        }
     }
-}
 
-fun signingValue(envKey: String, propKey: String): String? =
-    System.getenv(envKey) ?: keystoreProperties.getProperty(propKey)
+fun signingValue(
+    envKey: String,
+    propKey: String,
+): String? = System.getenv(envKey) ?: keystoreProperties.getProperty(propKey)
 
 android {
     namespace = "com.speedevand.inkride"
@@ -55,11 +58,12 @@ android {
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
             // Use the release keystore when configured, otherwise fall back to debug
             // signing so the project still builds without secrets present.
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs
+                .getByName("release")
                 .takeIf { it.storeFile != null }
                 ?: signingConfigs.getByName("debug")
         }
@@ -112,7 +116,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    
+
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
 

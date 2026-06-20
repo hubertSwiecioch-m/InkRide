@@ -21,9 +21,8 @@ import java.util.concurrent.ConcurrentHashMap
  */
 @SuppressLint("MissingPermission")
 class AndroidBleSensorDataSource(
-    private val context: Context
+    private val context: Context,
 ) : BleSensorDataSource {
-
     private val bluetoothManager: BluetoothManager? =
         context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
 
@@ -54,7 +53,10 @@ class AndroidBleSensorDataSource(
 
     override fun observeSamples(): Flow<BleSample> = samples
 
-    override fun connect(hrmAddress: String?, cadenceAddress: String?) {
+    override fun connect(
+        hrmAddress: String?,
+        cadenceAddress: String?,
+    ) {
         val desired = setOfNotNull(hrmAddress, cadenceAddress)
         if (desired == connectedAddresses) return
         disconnect()
@@ -67,7 +69,8 @@ class AndroidBleSensorDataSource(
         desired.forEach { address ->
             val device = runCatching { adapter.getRemoteDevice(address) }.getOrNull() ?: return@forEach
             cadenceTrackers[address] = CscCadenceTracker()
-            val gatt = device.connectGatt(context, /* autoConnect = */ true, gattCallback)
+            // autoConnect = true
+            val gatt = device.connectGatt(context, true, gattCallback)
             if (gatt != null) gatts[address] = gatt
         }
     }
@@ -88,60 +91,77 @@ class AndroidBleSensorDataSource(
     }
 
     private fun emit() {
-        samples.value = BleSample(
-            timestampMs = System.currentTimeMillis(),
-            heartRateBpm = latestHeartRate,
-            cadenceRpm = latestCadence,
-            wheelRevolutions = latestWheelRevolutions
-        )
+        samples.value =
+            BleSample(
+                timestampMs = System.currentTimeMillis(),
+                heartRateBpm = latestHeartRate,
+                cadenceRpm = latestCadence,
+                wheelRevolutions = latestWheelRevolutions,
+            )
     }
 
-    private val gattCallback = object : android.bluetooth.BluetoothGattCallback() {
-        override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
-                gatt.discoverServices()
+    private val gattCallback =
+        object : android.bluetooth.BluetoothGattCallback() {
+            override fun onConnectionStateChange(
+                gatt: BluetoothGatt,
+                status: Int,
+                newState: Int,
+            ) {
+                if (newState == BluetoothProfile.STATE_CONNECTED) {
+                    gatt.discoverServices()
+                }
+            }
+
+            override fun onServicesDiscovered(
+                gatt: BluetoothGatt,
+                status: Int,
+            ) {
+                if (status != BluetoothGatt.GATT_SUCCESS) return
+                val address = gatt.device?.address ?: return
+                val queue = ArrayDeque<BluetoothGattCharacteristic>()
+                gatt
+                    .getService(BleGatt.HEART_RATE_SERVICE)
+                    ?.getCharacteristic(BleGatt.HEART_RATE_MEASUREMENT)
+                    ?.let { queue.add(it) }
+                gatt
+                    .getService(BleGatt.CSC_SERVICE)
+                    ?.getCharacteristic(BleGatt.CSC_MEASUREMENT)
+                    ?.let { queue.add(it) }
+                pendingNotifications[address] = queue
+                enableNextNotification(gatt, address)
+            }
+
+            override fun onDescriptorWrite(
+                gatt: BluetoothGatt,
+                descriptor: BluetoothGattDescriptor,
+                status: Int,
+            ) {
+                // Previous CCCD write finished — enable the next characteristic, if any.
+                gatt.device?.address?.let { enableNextNotification(gatt, it) }
+            }
+
+            @Deprecated("Deprecated in API 33; the pre-33 overload remains for broad device support")
+            override fun onCharacteristicChanged(
+                gatt: BluetoothGatt,
+                characteristic: BluetoothGattCharacteristic,
+            ) {
+                handleCharacteristic(gatt.device?.address, characteristic.uuid, characteristic.value)
+            }
+
+            override fun onCharacteristicChanged(
+                gatt: BluetoothGatt,
+                characteristic: BluetoothGattCharacteristic,
+                value: ByteArray,
+            ) {
+                handleCharacteristic(gatt.device?.address, characteristic.uuid, value)
             }
         }
 
-        override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            if (status != BluetoothGatt.GATT_SUCCESS) return
-            val address = gatt.device?.address ?: return
-            val queue = ArrayDeque<BluetoothGattCharacteristic>()
-            gatt.getService(BleGatt.HEART_RATE_SERVICE)
-                ?.getCharacteristic(BleGatt.HEART_RATE_MEASUREMENT)?.let { queue.add(it) }
-            gatt.getService(BleGatt.CSC_SERVICE)
-                ?.getCharacteristic(BleGatt.CSC_MEASUREMENT)?.let { queue.add(it) }
-            pendingNotifications[address] = queue
-            enableNextNotification(gatt, address)
-        }
-
-        override fun onDescriptorWrite(
-            gatt: BluetoothGatt,
-            descriptor: BluetoothGattDescriptor,
-            status: Int
-        ) {
-            // Previous CCCD write finished — enable the next characteristic, if any.
-            gatt.device?.address?.let { enableNextNotification(gatt, it) }
-        }
-
-        @Deprecated("Deprecated in API 33; the pre-33 overload remains for broad device support")
-        override fun onCharacteristicChanged(
-            gatt: BluetoothGatt,
-            characteristic: BluetoothGattCharacteristic
-        ) {
-            handleCharacteristic(gatt.device?.address, characteristic.uuid, characteristic.value)
-        }
-
-        override fun onCharacteristicChanged(
-            gatt: BluetoothGatt,
-            characteristic: BluetoothGattCharacteristic,
-            value: ByteArray
-        ) {
-            handleCharacteristic(gatt.device?.address, characteristic.uuid, value)
-        }
-    }
-
-    private fun handleCharacteristic(address: String?, uuid: java.util.UUID, data: ByteArray?) {
+    private fun handleCharacteristic(
+        address: String?,
+        uuid: java.util.UUID,
+        data: ByteArray?,
+    ) {
         if (data == null) return
         when (uuid) {
             BleGatt.HEART_RATE_MEASUREMENT -> {
@@ -150,6 +170,7 @@ class AndroidBleSensorDataSource(
                     emit()
                 }
             }
+
             BleGatt.CSC_MEASUREMENT -> {
                 val tracker = address?.let { cadenceTrackers[it] } ?: return
                 val result = tracker.update(data) ?: return
@@ -164,7 +185,10 @@ class AndroidBleSensorDataSource(
      * Enables the next queued characteristic's notifications and writes its CCCD,
      * one at a time. Skips characteristics with no CCCD by recursing immediately.
      */
-    private fun enableNextNotification(gatt: BluetoothGatt, address: String) {
+    private fun enableNextNotification(
+        gatt: BluetoothGatt,
+        address: String,
+    ) {
         val queue = pendingNotifications[address] ?: return
         val characteristic = queue.removeFirstOrNull() ?: return
         gatt.setCharacteristicNotification(characteristic, true)

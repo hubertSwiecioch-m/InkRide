@@ -8,7 +8,7 @@ import com.speedevand.inkride.core.domain.navigation.BleSensorsRoute
 fun NavGraphBuilder.bleGraph(navController: NavController) {
     composable<BleSensorsRoute> {
         BleSensorsRoot(
-            onNavigateBack = { navController.popBackStack() }
+            onNavigateBack = { navController.popBackStack() },
         )
     }
 }

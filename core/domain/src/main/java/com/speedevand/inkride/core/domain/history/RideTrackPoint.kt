@@ -10,5 +10,5 @@ data class RideTrackPoint(
     val latitude: Double,
     val longitude: Double,
     val altitudeM: Double? = null,
-    val accuracyM: Float? = null
+    val accuracyM: Float? = null,
 )

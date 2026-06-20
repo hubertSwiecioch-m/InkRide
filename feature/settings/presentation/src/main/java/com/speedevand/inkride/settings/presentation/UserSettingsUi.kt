@@ -1,9 +1,9 @@
 package com.speedevand.inkride.settings.presentation
 
-import com.speedevand.inkride.core.presentation.UiText
 import com.speedevand.inkride.core.domain.settings.BikeType
 import com.speedevand.inkride.core.domain.settings.MeasurementUnits
 import com.speedevand.inkride.core.domain.settings.UserSettings
+import com.speedevand.inkride.core.presentation.UiText
 import com.speedevand.inkride.settings.presentation.SettingsConstants.KMH_TO_MPH_FACTOR
 import java.util.Locale
 
@@ -21,7 +21,7 @@ data class UserSettingsUi(
     // Speed is shown in the user's current unit (km/h or mph).
     val maxSpeedAlert: String = "",
     val hrMinAlert: String = "",
-    val hrMaxAlert: String = ""
+    val hrMaxAlert: String = "",
 )
 
 fun UserSettings.toUserSettingsUi(): UserSettingsUi {
@@ -36,6 +36,6 @@ fun UserSettings.toUserSettingsUi(): UserSettingsUi {
         showPower = showPower,
         maxSpeedAlert = alerts.maxSpeedKmh?.let { String.format(Locale.ROOT, "%.0f", it * speedFactor) } ?: "",
         hrMinAlert = alerts.hrZoneMinBpm?.toString() ?: "",
-        hrMaxAlert = alerts.hrZoneMaxBpm?.toString() ?: ""
+        hrMaxAlert = alerts.hrZoneMaxBpm?.toString() ?: "",
     )
 }

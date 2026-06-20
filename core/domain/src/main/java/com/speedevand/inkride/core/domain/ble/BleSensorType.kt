@@ -6,5 +6,5 @@ enum class BleSensorType {
     HEART_RATE,
 
     /** Cycling Speed and Cadence — GATT service 0x1816. */
-    CADENCE
+    CADENCE,
 }

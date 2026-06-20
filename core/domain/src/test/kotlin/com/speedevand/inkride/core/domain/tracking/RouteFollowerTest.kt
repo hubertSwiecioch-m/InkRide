@@ -10,15 +10,15 @@ import assertk.assertions.isTrue
 import org.junit.jupiter.api.Test
 
 class RouteFollowerTest {
-
     private val follower = RouteFollower(offRouteThresholdM = 50.0)
 
     // A ~685 m straight segment running east along latitude 52.0.
-    private val route = PlannedRoute(
-        name = "Test",
-        points = listOf(RoutePoint(52.0, 21.0), RoutePoint(52.0, 21.01)),
-        waypoints = listOf(RouteWaypoint(52.0, 21.01, "Finish"))
-    )
+    private val route =
+        PlannedRoute(
+            name = "Test",
+            points = listOf(RoutePoint(52.0, 21.0), RoutePoint(52.0, 21.01)),
+            waypoints = listOf(RouteWaypoint(52.0, 21.01, "Finish")),
+        )
 
     @Test
     fun `a point on the line is not off route`() {
@@ -50,9 +50,10 @@ class RouteFollowerTest {
     fun `once every named turn is behind, it shows distance to the route end`() {
         // The only waypoint sits at the very start, so from the midpoint the
         // rider has passed it; the readout must fall back to the finish.
-        val startWaypoint = route.copy(
-            waypoints = listOf(RouteWaypoint(52.0, 21.0, "Start"))
-        )
+        val startWaypoint =
+            route.copy(
+                waypoints = listOf(RouteWaypoint(52.0, 21.0, "Start")),
+            )
 
         val progress = follower.evaluate(startWaypoint, latitude = 52.0, longitude = 21.005)
 

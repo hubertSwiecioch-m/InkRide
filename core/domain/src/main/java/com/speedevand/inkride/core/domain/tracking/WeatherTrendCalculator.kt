@@ -27,7 +27,7 @@ class WeatherTrendCalculator(
     // one reading every [minSampleIntervalMs] is plenty. Downsampling keeps the
     // window to a few hundred entries instead of thousands, so the per-sample
     // least-squares stays cheap.
-    private val minSampleIntervalMs: Long = 10_000L
+    private val minSampleIntervalMs: Long = 10_000L,
 ) {
     // (timestampMs, pressureHpa), oldest first.
     private val readings = ArrayDeque<Pair<Long, Double>>()
@@ -42,7 +42,10 @@ class WeatherTrendCalculator(
      * Adds a pressure reading (downsampled to one per [minSampleIntervalMs]) and
      * drops anything older than [windowMs].
      */
-    fun add(timestampMs: Long, pressureHpa: Double) {
+    fun add(
+        timestampMs: Long,
+        pressureHpa: Double,
+    ) {
         // Guard the sentinel explicitly so the first reading is always taken
         // (timestampMs - Long.MIN_VALUE would overflow).
         if (lastAddedMs != Long.MIN_VALUE && timestampMs - lastAddedMs < minSampleIntervalMs) return

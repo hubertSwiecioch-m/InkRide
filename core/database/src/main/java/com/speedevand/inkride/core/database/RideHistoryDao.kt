@@ -24,7 +24,7 @@ interface RideHistoryDao {
             COALESCE(MAX(maxSpeedKmh), 0) AS maxSpeedKmh,
             COALESCE(SUM(caloriesKcal), 0) AS totalCaloriesKcal
         FROM ride_history
-        """
+        """,
     )
     fun observeLifetimeStats(): Flow<LifetimeStatsAggregate>
 

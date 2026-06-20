@@ -6,39 +6,38 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.speedevand.inkride.core.domain.onFailure
 import com.speedevand.inkride.core.domain.onSuccess
+import com.speedevand.inkride.core.domain.settings.MeasurementUnits
+import com.speedevand.inkride.core.domain.settings.UserSettings
+import com.speedevand.inkride.core.domain.settings.UserSettingsRepository
 import com.speedevand.inkride.core.presentation.UiText
 import com.speedevand.inkride.core.presentation.toUiText
-import com.speedevand.inkride.core.domain.settings.MeasurementUnits
-import com.speedevand.inkride.core.domain.settings.UserSettingsRepository
-import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_FACTOR_LBS
-import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_MAX_KG
-import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_MIN_KG
-import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_MAX_LBS
-import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_MIN_LBS
 import com.speedevand.inkride.settings.presentation.SettingsConstants.AGE_MAX
 import com.speedevand.inkride.settings.presentation.SettingsConstants.AGE_MIN
+import com.speedevand.inkride.settings.presentation.SettingsConstants.ALERT_HR_DEFAULT_MAX_BPM
+import com.speedevand.inkride.settings.presentation.SettingsConstants.ALERT_HR_DEFAULT_MIN_BPM
+import com.speedevand.inkride.settings.presentation.SettingsConstants.ALERT_SPEED_DEFAULT_KMH
 import com.speedevand.inkride.settings.presentation.SettingsConstants.BIKE_WEIGHT_MAX_KG
 import com.speedevand.inkride.settings.presentation.SettingsConstants.BIKE_WEIGHT_MAX_LBS
 import com.speedevand.inkride.settings.presentation.SettingsConstants.BIKE_WEIGHT_MIN_KG
 import com.speedevand.inkride.settings.presentation.SettingsConstants.BIKE_WEIGHT_MIN_LBS
 import com.speedevand.inkride.settings.presentation.SettingsConstants.KMH_TO_MPH_FACTOR
-import com.speedevand.inkride.settings.presentation.SettingsConstants.ALERT_SPEED_DEFAULT_KMH
-import com.speedevand.inkride.settings.presentation.SettingsConstants.ALERT_HR_DEFAULT_MIN_BPM
-import com.speedevand.inkride.settings.presentation.SettingsConstants.ALERT_HR_DEFAULT_MAX_BPM
-import com.speedevand.inkride.core.domain.settings.UserSettings
-import java.util.Locale
-import kotlin.math.roundToInt
+import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_FACTOR_LBS
+import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_MAX_KG
+import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_MAX_LBS
+import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_MIN_KG
+import com.speedevand.inkride.settings.presentation.SettingsConstants.WEIGHT_MIN_LBS
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
+import kotlin.math.roundToInt
 
 class SettingsViewModel(
     private val userSettingsRepository: UserSettingsRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
 
@@ -48,11 +47,12 @@ class SettingsViewModel(
     init {
         observeUserSettings()
         val currentLocales = AppCompatDelegate.getApplicationLocales()
-        val lang = if (currentLocales.isEmpty) {
-            LocaleListCompat.getAdjustedDefault()[0]?.language ?: "en"
-        } else {
-            currentLocales[0]?.language ?: "en"
-        }
+        val lang =
+            if (currentLocales.isEmpty) {
+                LocaleListCompat.getAdjustedDefault()[0]?.language ?: "en"
+            } else {
+                currentLocales[0]?.language ?: "en"
+            }
         _state.update { it.copy(currentLanguageCode = lang) }
     }
 
@@ -62,11 +62,12 @@ class SettingsViewModel(
                 _state.update {
                     it.copy(
                         userSettings = action.settings,
-                        userSettingsUi = action.settings.toUserSettingsUi()
+                        userSettingsUi = action.settings.toUserSettingsUi(),
                     )
                 }
                 saveSettings(action.settings)
             }
+
             is SettingsAction.OnWeightChange -> {
                 val isMetric = _state.value.userSettings.units == MeasurementUnits.METRIC
                 val weightMin = (if (isMetric) WEIGHT_MIN_KG else WEIGHT_MIN_LBS).toInt()
@@ -88,17 +89,19 @@ class SettingsViewModel(
                             numericValue = weightMin
                             finalWeightText = weightMin.toString()
                         } else {
-                            error = UiText.StringResource(
-                                R.string.settings_error_weight_range,
-                                arrayOf(weightMin, weightMax, weightUnit)
-                            )
+                            error =
+                                UiText.StringResource(
+                                    R.string.settings_error_weight_range,
+                                    arrayOf(weightMin, weightMax, weightUnit),
+                                )
                         }
                     }
                 } else {
-                    error = UiText.StringResource(
-                        R.string.settings_error_weight_range,
-                        arrayOf(weightMin, weightMax, weightUnit)
-                    )
+                    error =
+                        UiText.StringResource(
+                            R.string.settings_error_weight_range,
+                            arrayOf(weightMin, weightMax, weightUnit),
+                        )
                 }
 
                 _state.update {
@@ -130,17 +133,19 @@ class SettingsViewModel(
                             numericValue = ageMin
                             finalAgeText = ageMin.toString()
                         } else {
-                            error = UiText.StringResource(
-                                R.string.settings_error_age_range,
-                                arrayOf(ageMin, ageMax)
-                            )
+                            error =
+                                UiText.StringResource(
+                                    R.string.settings_error_age_range,
+                                    arrayOf(ageMin, ageMax),
+                                )
                         }
                     }
                 } else {
-                    error = UiText.StringResource(
-                        R.string.settings_error_age_range,
-                        arrayOf(ageMin, ageMax)
-                    )
+                    error =
+                        UiText.StringResource(
+                            R.string.settings_error_age_range,
+                            arrayOf(ageMin, ageMax),
+                        )
                 }
 
                 _state.update {
@@ -172,17 +177,19 @@ class SettingsViewModel(
                             numericValue = weightMin.toDouble()
                             finalWeightText = weightMin.toString()
                         } else {
-                            error = UiText.StringResource(
-                                R.string.settings_error_bike_weight_range,
-                                arrayOf(weightMin, weightMax, weightUnit)
-                            )
+                            error =
+                                UiText.StringResource(
+                                    R.string.settings_error_bike_weight_range,
+                                    arrayOf(weightMin, weightMax, weightUnit),
+                                )
                         }
                     }
                 } else {
-                    error = UiText.StringResource(
-                        R.string.settings_error_bike_weight_range,
-                        arrayOf(weightMin, weightMax, weightUnit)
-                    )
+                    error =
+                        UiText.StringResource(
+                            R.string.settings_error_bike_weight_range,
+                            arrayOf(weightMin, weightMax, weightUnit),
+                        )
                 }
 
                 _state.update {
@@ -198,21 +205,23 @@ class SettingsViewModel(
             is SettingsAction.OnBikeTypeChange -> {
                 saveSettings(_state.value.userSettings.copy(bikeType = action.type))
             }
+
             is SettingsAction.OnLanguageChange -> {
                 _state.update { it.copy(currentLanguageCode = action.languageCode) }
                 viewModelScope.launch {
                     val newSettings = _state.value.userSettings.copy(languageCode = action.languageCode)
-                    userSettingsRepository.save(newSettings)
+                    userSettingsRepository
+                        .save(newSettings)
                         .onSuccess {
                             AppCompatDelegate.setApplicationLocales(
-                                LocaleListCompat.forLanguageTags(action.languageCode)
+                                LocaleListCompat.forLanguageTags(action.languageCode),
                             )
-                        }
-                        .onFailure { error ->
+                        }.onFailure { error ->
                             _events.send(SettingsEvent.ShowError(error.toUiText()))
                         }
                 }
             }
+
             is SettingsAction.OnMaxSpeedAlertChange -> {
                 // Allow a decimal point so a fractional threshold (e.g. "32.5")
                 // isn't silently collapsed into an integer; toDoubleOrNull below
@@ -231,6 +240,7 @@ class SettingsViewModel(
                     saveSettings(current.copy(alerts = current.alerts.copy(maxSpeedKmh = kmh)))
                 }
             }
+
             is SettingsAction.OnMaxSpeedAlertToggle -> {
                 val current = _state.value.userSettings
                 val isMetric = current.units == MeasurementUnits.METRIC
@@ -245,6 +255,7 @@ class SettingsViewModel(
                     saveSettings(current.copy(alerts = current.alerts.copy(maxSpeedKmh = null)))
                 }
             }
+
             is SettingsAction.OnHrMinAlertChange -> {
                 val filtered = action.value.filter { it.isDigit() }
                 _state.update {
@@ -256,6 +267,7 @@ class SettingsViewModel(
                     saveSettings(current.copy(alerts = current.alerts.copy(hrZoneMinBpm = bpm)))
                 }
             }
+
             is SettingsAction.OnHrMinAlertToggle -> {
                 val current = _state.value.userSettings
                 if (action.enabled) {
@@ -268,6 +280,7 @@ class SettingsViewModel(
                     saveSettings(current.copy(alerts = current.alerts.copy(hrZoneMinBpm = null)))
                 }
             }
+
             is SettingsAction.OnHrMaxAlertChange -> {
                 val filtered = action.value.filter { it.isDigit() }
                 _state.update {
@@ -279,6 +292,7 @@ class SettingsViewModel(
                     saveSettings(current.copy(alerts = current.alerts.copy(hrZoneMaxBpm = bpm)))
                 }
             }
+
             is SettingsAction.OnHrMaxAlertToggle -> {
                 val current = _state.value.userSettings
                 if (action.enabled) {
@@ -291,20 +305,28 @@ class SettingsViewModel(
                     saveSettings(current.copy(alerts = current.alerts.copy(hrZoneMaxBpm = null)))
                 }
             }
+
             SettingsAction.OnBackClick -> {
                 _state.update { it.copy(userSettingsUi = it.userSettings.toUserSettingsUi()) }
                 viewModelScope.launch {
                     _events.send(SettingsEvent.OnBack)
                 }
             }
+
             is SettingsAction.OnTabSelected -> {
                 _state.update { it.copy(selectedTab = action.tab) }
             }
-            SettingsAction.OnBluetoothSensorsClick -> viewModelScope.launch {
-                _events.send(SettingsEvent.OpenBleSensors)
+
+            SettingsAction.OnBluetoothSensorsClick -> {
+                viewModelScope.launch {
+                    _events.send(SettingsEvent.OpenBleSensors)
+                }
             }
-            SettingsAction.OnBikeProfilesClick -> viewModelScope.launch {
-                _events.send(SettingsEvent.OpenBikeProfiles)
+
+            SettingsAction.OnBikeProfilesClick -> {
+                viewModelScope.launch {
+                    _events.send(SettingsEvent.OpenBikeProfiles)
+                }
             }
         }
     }
@@ -326,7 +348,7 @@ class SettingsViewModel(
                         it.copy(
                             userSettings = settings,
                             userSettingsUi = settings.toUserSettingsUi(),
-                            currentLanguageCode = settings.languageCode
+                            currentLanguageCode = settings.languageCode,
                         )
                     }
                 }

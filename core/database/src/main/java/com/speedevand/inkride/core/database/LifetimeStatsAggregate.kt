@@ -7,5 +7,5 @@ data class LifetimeStatsAggregate(
     val totalMovingTimeSeconds: Long,
     val totalElevationGainM: Double,
     val maxSpeedKmh: Double,
-    val totalCaloriesKcal: Double
+    val totalCaloriesKcal: Double,
 )

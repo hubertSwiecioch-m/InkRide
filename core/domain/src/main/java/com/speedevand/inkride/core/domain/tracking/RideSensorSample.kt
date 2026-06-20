@@ -20,5 +20,5 @@ data class RideSensorSample(
     // Raw barometric pressure in hectopascals (null when no barometer). Used for
     // the local weather-trend hint; altitude fusion uses the derived
     // [altitudeFromBarometerM] instead.
-    val pressureHpa: Double? = null
+    val pressureHpa: Double? = null,
 )

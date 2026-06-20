@@ -22,13 +22,13 @@ import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.text.TextMMD
 import com.speedevand.inkride.dashboard.presentation.R
 import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @Composable
 fun Compass(
     bearing: Float?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     // Remove animation and use discrete steps (2 degrees) for E-Ink friendliness
     val currentBearing = bearing?.let { (it / 2f).roundToInt() * 2f } ?: 0f
@@ -36,29 +36,29 @@ fun Compass(
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         TextMMD(
             text = stringResource(R.string.dashboard_label_compass),
             style = DashboardTextStyles.caption,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.outline,
         )
 
         Box(
             modifier = Modifier.size(240.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             CompassRose(bearing = currentBearing)
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 TextMMD(
                     text = "${(bearing ?: 0f).toInt()}°",
-                    style = DashboardTextStyles.metricValue
+                    style = DashboardTextStyles.metricValue,
                 )
                 TextMMD(
                     text = getDirectionString(bearing ?: 0f),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
@@ -77,7 +77,9 @@ private fun CompassRose(bearing: Float) {
             color = color,
             radius = radius,
             center = center,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+            style =
+                androidx.compose.ui.graphics.drawscope
+                    .Stroke(width = 2.dp.toPx()),
         )
 
         for (angle in 0 until 360 step 30) {
@@ -87,20 +89,24 @@ private fun CompassRose(bearing: Float) {
                     color = color,
                     start = Offset(center.x, center.y - radius),
                     end = Offset(center.x, center.y - radius + 4.dp.toPx()),
-                    strokeWidth = 1.dp.toPx()
+                    strokeWidth = 1.dp.toPx(),
                 )
             }
         }
 
-        val directions = listOf(
-            0 to "N", 90 to "E", 180 to "S", 270 to "W"
-        )
+        val directions =
+            listOf(
+                0 to "N",
+                90 to "E",
+                180 to "S",
+                270 to "W",
+            )
 
         directions.forEach { (angle, label) ->
             val rad = Math.toRadians((angle - 90).toDouble())
             val x = center.x + (radius - 28.dp.toPx()) * cos(rad).toFloat()
             val y = center.y + (radius - 28.dp.toPx()) * sin(rad).toFloat()
-            
+
             drawContext.canvas.nativeCanvas.drawText(
                 label,
                 x,
@@ -110,19 +116,20 @@ private fun CompassRose(bearing: Float) {
                     this.textAlign = android.graphics.Paint.Align.CENTER
                     this.textSize = 16.sp.toPx()
                     this.isFakeBoldText = true
-                }
+                },
             )
         }
 
         // Triangle at the edge (avoids obscuring the center bearing text).
         // Rotated by bearing so the pointer indicates heading on the fixed rose.
         rotate(degrees = bearing, pivot = center) {
-            val markerPath = Path().apply {
-                moveTo(center.x, center.y - radius - 2.dp.toPx())
-                lineTo(center.x - 10.dp.toPx(), center.y - radius + 15.dp.toPx())
-                lineTo(center.x + 10.dp.toPx(), center.y - radius + 15.dp.toPx())
-                close()
-            }
+            val markerPath =
+                Path().apply {
+                    moveTo(center.x, center.y - radius - 2.dp.toPx())
+                    lineTo(center.x - 10.dp.toPx(), center.y - radius + 15.dp.toPx())
+                    lineTo(center.x + 10.dp.toPx(), center.y - radius + 15.dp.toPx())
+                    close()
+                }
             drawPath(path = markerPath, color = color)
         }
     }

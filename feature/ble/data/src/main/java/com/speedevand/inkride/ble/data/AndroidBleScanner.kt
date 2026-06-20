@@ -29,9 +29,8 @@ import kotlinx.coroutines.flow.callbackFlow
  */
 @SuppressLint("MissingPermission")
 class AndroidBleScanner(
-    private val context: Context
+    private val context: Context,
 ) : BleScanner {
-
     private val bluetoothManager: BluetoothManager? =
         context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
 
@@ -45,40 +44,50 @@ class AndroidBleScanner(
         return Result.Success(Unit)
     }
 
-    override fun scan(type: BleSensorType): Flow<BleDevice> = callbackFlow {
-        val scanner = bluetoothManager?.adapter?.bluetoothLeScanner
-        if (scanner == null || !hasScanPermission()) {
-            close()
-            return@callbackFlow
-        }
-
-        val serviceUuid = when (type) {
-            BleSensorType.HEART_RATE -> BleGatt.HEART_RATE_SERVICE
-            BleSensorType.CADENCE -> BleGatt.CSC_SERVICE
-        }
-        val filter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(serviceUuid))
-            .build()
-        val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .build()
-
-        val callback = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                val device = result.device ?: return
-                trySend(
-                    BleDevice(
-                        address = device.address,
-                        name = device.name ?: result.scanRecord?.deviceName,
-                        type = type
-                    )
-                )
+    override fun scan(type: BleSensorType): Flow<BleDevice> =
+        callbackFlow {
+            val scanner = bluetoothManager?.adapter?.bluetoothLeScanner
+            if (scanner == null || !hasScanPermission()) {
+                close()
+                return@callbackFlow
             }
-        }
 
-        scanner.startScan(listOf(filter), settings, callback)
-        awaitClose { runCatching { scanner.stopScan(callback) } }
-    }
+            val serviceUuid =
+                when (type) {
+                    BleSensorType.HEART_RATE -> BleGatt.HEART_RATE_SERVICE
+                    BleSensorType.CADENCE -> BleGatt.CSC_SERVICE
+                }
+            val filter =
+                ScanFilter
+                    .Builder()
+                    .setServiceUuid(ParcelUuid(serviceUuid))
+                    .build()
+            val settings =
+                ScanSettings
+                    .Builder()
+                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                    .build()
+
+            val callback =
+                object : ScanCallback() {
+                    override fun onScanResult(
+                        callbackType: Int,
+                        result: ScanResult,
+                    ) {
+                        val device = result.device ?: return
+                        trySend(
+                            BleDevice(
+                                address = device.address,
+                                name = device.name ?: result.scanRecord?.deviceName,
+                                type = type,
+                            ),
+                        )
+                    }
+                }
+
+            scanner.startScan(listOf(filter), settings, callback)
+            awaitClose { runCatching { scanner.stopScan(callback) } }
+        }
 
     private fun hasScanPermission(): Boolean {
         // BLUETOOTH_SCAN is a runtime permission only on Android 12+. Earlier
@@ -86,7 +95,7 @@ class AndroidBleScanner(
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
         return ContextCompat.checkSelfPermission(
             context,
-            Manifest.permission.BLUETOOTH_SCAN
+            Manifest.permission.BLUETOOTH_SCAN,
         ) == PackageManager.PERMISSION_GRANTED
     }
 
@@ -95,7 +104,7 @@ class AndroidBleScanner(
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
         return ContextCompat.checkSelfPermission(
             context,
-            Manifest.permission.BLUETOOTH_CONNECT
+            Manifest.permission.BLUETOOTH_CONNECT,
         ) == PackageManager.PERMISSION_GRANTED
     }
 }

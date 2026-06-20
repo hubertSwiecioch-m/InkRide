@@ -13,42 +13,45 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class RoomBikeProfileRepository(
-    private val dao: BikeProfileDao
+    private val dao: BikeProfileDao,
 ) : BikeProfileRepository {
+    override fun observeProfiles(): Flow<List<BikeProfile>> = dao.observeAll().map { list -> list.map { it.toDomain() } }
 
-    override fun observeProfiles(): Flow<List<BikeProfile>> =
-        dao.observeAll().map { list -> list.map { it.toDomain() } }
-
-    override suspend fun upsert(profile: BikeProfile): Result<Long, DataError.Local> {
-        return try {
+    override suspend fun upsert(profile: BikeProfile): Result<Long, DataError.Local> =
+        try {
             Result.Success(dao.upsert(profile.toEntity()))
         } catch (e: SQLiteFullException) {
             Result.Error(DataError.Local.DISK_FULL)
         } catch (e: Exception) {
             Result.Error(DataError.Local.UNKNOWN)
         }
-    }
 
-    override suspend fun delete(id: Long): EmptyResult<DataError.Local> {
-        return try {
+    override suspend fun delete(id: Long): EmptyResult<DataError.Local> =
+        try {
             dao.deleteById(id)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(DataError.Local.UNKNOWN)
         }
-    }
 }
 
-private fun BikeProfileEntity.toDomain() = BikeProfile(
-    id = id,
-    name = name,
-    weightKg = weightKg,
-    type = try { BikeType.valueOf(type) } catch (e: Exception) { BikeType.ROAD }
-)
+private fun BikeProfileEntity.toDomain() =
+    BikeProfile(
+        id = id,
+        name = name,
+        weightKg = weightKg,
+        type =
+            try {
+                BikeType.valueOf(type)
+            } catch (e: Exception) {
+                BikeType.ROAD
+            },
+    )
 
-private fun BikeProfile.toEntity() = BikeProfileEntity(
-    id = id,
-    name = name,
-    weightKg = weightKg,
-    type = type.name
-)
+private fun BikeProfile.toEntity() =
+    BikeProfileEntity(
+        id = id,
+        name = name,
+        weightKg = weightKg,
+        type = type.name,
+    )

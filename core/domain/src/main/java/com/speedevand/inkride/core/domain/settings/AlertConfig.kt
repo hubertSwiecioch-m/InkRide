@@ -11,7 +11,7 @@ package com.speedevand.inkride.core.domain.settings
 data class AlertConfig(
     val maxSpeedKmh: Double? = null,
     val hrZoneMinBpm: Int? = null,
-    val hrZoneMaxBpm: Int? = null
+    val hrZoneMaxBpm: Int? = null,
 ) {
     val hasAny: Boolean
         get() = maxSpeedKmh != null || hrZoneMinBpm != null || hrZoneMaxBpm != null

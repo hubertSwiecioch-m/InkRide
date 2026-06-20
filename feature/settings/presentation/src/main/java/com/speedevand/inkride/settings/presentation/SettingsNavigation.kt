@@ -18,14 +18,14 @@ fun NavGraphBuilder.settingsGraph(navController: NavController) {
             },
             onOpenBikeProfiles = {
                 navController.navigate(BikeProfilesRoute)
-            }
+            },
         )
     }
     composable<BikeProfilesRoute> {
         BikeProfilesRoot(
             onNavigateBack = {
                 navController.popBackStack()
-            }
+            },
         )
     }
 }

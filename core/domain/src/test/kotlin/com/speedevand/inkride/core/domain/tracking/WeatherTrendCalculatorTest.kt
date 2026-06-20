@@ -5,7 +5,6 @@ import assertk.assertions.isEqualTo
 import org.junit.jupiter.api.Test
 
 class WeatherTrendCalculatorTest {
-
     private val hourMs = 60 * 60 * 1000L
 
     @Test

@@ -15,5 +15,5 @@ data class RideRecord(
     val caloriesKcal: Double,
     val averagePowerWatts: Int = 0,
     val bikeWeightKg: Double = 10.0,
-    val bikeType: BikeType = BikeType.ROAD
+    val bikeType: BikeType = BikeType.ROAD,
 )

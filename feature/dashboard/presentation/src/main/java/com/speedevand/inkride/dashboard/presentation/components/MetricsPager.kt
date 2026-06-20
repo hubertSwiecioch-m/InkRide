@@ -15,13 +15,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
+import com.speedevand.inkride.core.domain.settings.UserSettings
 import com.speedevand.inkride.core.presentation.DesignConstants
 import com.speedevand.inkride.dashboard.presentation.R
 import com.speedevand.inkride.dashboard.presentation.model.RideMetricsUi
-import com.speedevand.inkride.core.domain.settings.UserSettings
 
 enum class DashboardPage {
-    PRIMARY, SECONDARY, COMPASS
+    PRIMARY,
+    SECONDARY,
+    COMPASS,
 }
 
 @Composable
@@ -29,27 +31,30 @@ fun MetricsPager(
     pagerState: PagerState,
     metrics: RideMetricsUi,
     settings: UserSettings,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    val visiblePages = remember(settings) {
-        mutableListOf<DashboardPage>().apply {
-            add(DashboardPage.PRIMARY)
-            val hasSecondary = settings.showMaxSpeed || settings.showElevationGain ||
-                               settings.showCalories || settings.showAltitude ||
-                               settings.showPower
-            if (hasSecondary) add(DashboardPage.SECONDARY)
-            if (settings.showCompass) add(DashboardPage.COMPASS)
+    val visiblePages =
+        remember(settings) {
+            mutableListOf<DashboardPage>().apply {
+                add(DashboardPage.PRIMARY)
+                val hasSecondary =
+                    settings.showMaxSpeed || settings.showElevationGain ||
+                        settings.showCalories || settings.showAltitude ||
+                        settings.showPower
+                if (hasSecondary) add(DashboardPage.SECONDARY)
+                if (settings.showCompass) add(DashboardPage.COMPASS)
+            }
         }
-    }
 
     VerticalPager(
         state = pagerState,
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        flingBehavior = PagerDefaults.flingBehavior(
-            state = pagerState,
-            snapAnimationSpec = snap()
-        )
+        flingBehavior =
+            PagerDefaults.flingBehavior(
+                state = pagerState,
+                snapAnimationSpec = snap(),
+            ),
     ) { pageIndex ->
         val page = visiblePages.getOrNull(pageIndex)
         when (page) {
@@ -62,11 +67,14 @@ fun MetricsPager(
 }
 
 @Composable
-private fun PrimaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings) {
+private fun PrimaryMetricsPage(
+    metrics: RideMetricsUi,
+    settings: UserSettings,
+) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         SpeedHero(speed = metrics.currentSpeedKmh, unit = metrics.speedUnit)
 
@@ -74,9 +82,10 @@ private fun PrimaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings) {
         val showSpeedGradeRow = settings.showAverageSpeed || settings.showGrade
         if (showDistanceRow || showSpeedGradeRow) {
             HorizontalDividerMMD(
-                modifier = Modifier
-                    .fillMaxWidth(0.5f)
-                    .padding(vertical = DesignConstants.PADDING_MEDIUM)
+                modifier =
+                    Modifier
+                        .fillMaxWidth(0.5f)
+                        .padding(vertical = DesignConstants.PADDING_MEDIUM),
             )
         }
 
@@ -88,7 +97,7 @@ private fun PrimaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings) {
                             label = stringResource(R.string.dashboard_metric_distance),
                             value = metrics.distanceKm,
                             unit = metrics.distanceUnit,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                     if (settings.showMovingTime) {
@@ -96,7 +105,7 @@ private fun PrimaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings) {
                             label = stringResource(R.string.dashboard_metric_moving_time),
                             value = metrics.movingTime,
                             unit = "",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -108,7 +117,7 @@ private fun PrimaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings) {
                             label = stringResource(R.string.dashboard_metric_avg_speed),
                             value = metrics.averageSpeedKmh,
                             unit = metrics.speedUnit,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                     if (settings.showGrade) {
@@ -116,7 +125,7 @@ private fun PrimaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings) {
                             label = stringResource(R.string.dashboard_metric_grade),
                             value = metrics.gradePercent,
                             unit = "%",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -126,11 +135,14 @@ private fun PrimaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings) {
 }
 
 @Composable
-private fun SecondaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings) {
+private fun SecondaryMetricsPage(
+    metrics: RideMetricsUi,
+    settings: UserSettings,
+) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_LARGE)) {
             if (settings.showMaxSpeed || settings.showElevationGain) {
@@ -140,7 +152,7 @@ private fun SecondaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings)
                             label = stringResource(R.string.dashboard_metric_max_speed),
                             value = metrics.maxSpeedKmh,
                             unit = metrics.speedUnit,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                     if (settings.showElevationGain) {
@@ -148,7 +160,7 @@ private fun SecondaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings)
                             label = stringResource(R.string.dashboard_metric_elevation_gain),
                             value = metrics.elevationGainM,
                             unit = metrics.altitudeUnit,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -161,7 +173,7 @@ private fun SecondaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings)
                             label = stringResource(R.string.dashboard_metric_calories),
                             value = metrics.caloriesKcal,
                             unit = "kcal",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                     if (settings.showAltitude) {
@@ -169,7 +181,7 @@ private fun SecondaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings)
                             label = stringResource(R.string.dashboard_metric_altitude),
                             value = metrics.altitudeM,
                             unit = metrics.altitudeUnit,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                     if (settings.showPower) {
@@ -177,7 +189,7 @@ private fun SecondaryMetricsPage(metrics: RideMetricsUi, settings: UserSettings)
                             label = stringResource(R.string.dashboard_metric_power),
                             value = metrics.powerWatts,
                             unit = "W",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }

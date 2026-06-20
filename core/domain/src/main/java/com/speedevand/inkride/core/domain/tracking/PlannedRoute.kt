@@ -3,7 +3,7 @@ package com.speedevand.inkride.core.domain.tracking
 /** A single ordered point along a loaded route (the line the rider follows). */
 data class RoutePoint(
     val latitude: Double,
-    val longitude: Double
+    val longitude: Double,
 )
 
 /**
@@ -13,7 +13,7 @@ data class RoutePoint(
 data class RouteWaypoint(
     val latitude: Double,
     val longitude: Double,
-    val name: String? = null
+    val name: String? = null,
 )
 
 /**
@@ -27,5 +27,5 @@ data class RouteWaypoint(
 data class PlannedRoute(
     val name: String? = null,
     val points: List<RoutePoint> = emptyList(),
-    val waypoints: List<RouteWaypoint> = emptyList()
+    val waypoints: List<RouteWaypoint> = emptyList(),
 )

@@ -4,5 +4,5 @@ package com.speedevand.inkride.core.domain.ble
 data class BleDevice(
     val address: String,
     val name: String?,
-    val type: BleSensorType
+    val type: BleSensorType,
 )

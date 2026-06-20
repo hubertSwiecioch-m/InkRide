@@ -23,16 +23,19 @@ import com.speedevand.inkride.dashboard.presentation.R
  * with the supporting [MetricItem] grid below it.
  */
 @Composable
-fun SpeedHero(speed: String, unit: String) {
+fun SpeedHero(
+    speed: String,
+    unit: String,
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         TextMMD(
             text = stringResource(R.string.dashboard_label_speed),
             style = DashboardTextStyles.caption,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.outline,
         )
 
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -46,7 +49,7 @@ fun SpeedHero(speed: String, unit: String) {
                 text = speed,
                 style = DashboardTextStyles.hero(heroSize),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
@@ -54,7 +57,7 @@ fun SpeedHero(speed: String, unit: String) {
             text = unit,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.outline,
         )
     }
 }

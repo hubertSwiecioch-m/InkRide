@@ -2,25 +2,25 @@ package com.speedevand.inkride.history.presentation
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import com.speedevand.inkride.core.domain.settings.MeasurementUnits
 import com.speedevand.inkride.core.domain.history.RideRecord
+import com.speedevand.inkride.core.domain.settings.MeasurementUnits
 import org.junit.jupiter.api.Test
 
 class RideRecordMappingTest {
-
-    private val sampleRide = RideRecord(
-        id = 1L,
-        startTimestamp = 0L,
-        endTimestamp = 3661000L,
-        distanceKm = 10.5,
-        movingTimeSeconds = 1800L,
-        elapsedTimeSeconds = 3661L,
-        averageSpeedKmh = 21.0,
-        maxSpeedKmh = 35.0,
-        elevationGainM = 150.0,
-        caloriesKcal = 300.0,
-        averagePowerWatts = 120
-    )
+    private val sampleRide =
+        RideRecord(
+            id = 1L,
+            startTimestamp = 0L,
+            endTimestamp = 3661000L,
+            distanceKm = 10.5,
+            movingTimeSeconds = 1800L,
+            elapsedTimeSeconds = 3661L,
+            averageSpeedKmh = 21.0,
+            maxSpeedKmh = 35.0,
+            elevationGainM = 150.0,
+            caloriesKcal = 300.0,
+            averagePowerWatts = 120,
+        )
 
     @Test
     fun `toUi with metric units formats correctly`() {

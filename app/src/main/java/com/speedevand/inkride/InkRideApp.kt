@@ -27,7 +27,7 @@ class InkRideApp : Application() {
                 dashboardPresentationModule,
                 historyPresentationModule,
                 bleDataModule,
-                blePresentationModule
+                blePresentationModule,
             )
         }
     }

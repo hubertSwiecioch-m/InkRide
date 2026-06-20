@@ -37,7 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.speedevand.inkride.core.design_system.InkRideTheme
 import com.mudita.mmd.components.bottom_sheet.ModalBottomSheetMMD
 import com.mudita.mmd.components.bottom_sheet.rememberModalBottomSheetMMDState
 import com.mudita.mmd.components.buttons.ButtonMMD
@@ -45,6 +44,7 @@ import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.mudita.mmd.components.top_app_bar.TopAppBarMMD
+import com.speedevand.inkride.core.design_system.InkRideTheme
 import com.speedevand.inkride.core.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -56,36 +56,43 @@ fun RideDetailRoot(
 ) {
     val context = LocalContext.current
     val exportShareTitle = stringResource(R.string.ride_detail_export_share_title)
-    val viewModel: RideDetailViewModel = koinViewModel(
-        key = rideId.toString(),
-        parameters = { parametersOf(rideId) }
-    )
+    val viewModel: RideDetailViewModel =
+        koinViewModel(
+            key = rideId.toString(),
+            parameters = { parametersOf(rideId) },
+        )
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            RideDetailEvent.NavigateBack -> onNavigateBack()
-            is RideDetailEvent.ShowError -> {
-                Toast.makeText(
-                    context,
-                    event.message.asString(context),
-                    Toast.LENGTH_LONG
-                ).show()
+            RideDetailEvent.NavigateBack -> {
+                onNavigateBack()
             }
+
+            is RideDetailEvent.ShowError -> {
+                Toast
+                    .makeText(
+                        context,
+                        event.message.asString(context),
+                        Toast.LENGTH_LONG,
+                    ).show()
+            }
+
             is RideDetailEvent.ShareGpx -> {
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/gpx+xml"
-                    putExtra(Intent.EXTRA_STREAM, event.uri)
-                    // ClipData carries the URI grant to whichever target the chooser
-                    // resolves, which is more reliable across OEMs than the flag alone.
-                    clipData = ClipData.newRawUri(null, event.uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
+                val shareIntent =
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "application/gpx+xml"
+                        putExtra(Intent.EXTRA_STREAM, event.uri)
+                        // ClipData carries the URI grant to whichever target the chooser
+                        // resolves, which is more reliable across OEMs than the flag alone.
+                        clipData = ClipData.newRawUri(null, event.uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
                 context.startActivity(
                     Intent.createChooser(
                         shareIntent,
-                        exportShareTitle
-                    )
+                        exportShareTitle,
+                    ),
                 )
             }
         }
@@ -98,7 +105,7 @@ fun RideDetailRoot(
 @Composable
 fun RideDetailScreen(
     state: RideDetailState,
-    onAction: (RideDetailAction) -> Unit
+    onAction: (RideDetailAction) -> Unit,
 ) {
     var showConfirmDelete by remember { mutableStateOf(value = false) }
     var showRouteMap by remember { mutableStateOf(value = false) }
@@ -110,25 +117,27 @@ fun RideDetailScreen(
         // fully expanded, giving a large, freely-pannable map.
         ModalBottomSheetMMD(
             onDismissRequest = { showRouteMap = false },
-            sheetState = rememberModalBottomSheetMMDState(skipPartiallyExpanded = true)
+            sheetState = rememberModalBottomSheetMMDState(skipPartiallyExpanded = true),
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 TextMMD(
                     text = stringResource(R.string.ride_detail_section_route),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 RideRouteMap(
                     points = state.trackPoints,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.85f)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.85f),
                 )
             }
         }
@@ -139,28 +148,29 @@ fun RideDetailScreen(
             onDismissRequest = { showConfirmDelete = false },
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 TextMMD(
                     text = stringResource(R.string.ride_detail_delete_title),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 TextMMD(
                     text = stringResource(R.string.ride_detail_delete_message),
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     OutlinedButtonMMD(
                         onClick = { showConfirmDelete = false },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     ) {
                         TextMMD(text = stringResource(R.string.history_action_cancel))
                     }
@@ -169,7 +179,7 @@ fun RideDetailScreen(
                             onAction(RideDetailAction.OnDeleteClick)
                             showConfirmDelete = false
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     ) {
                         TextMMD(text = stringResource(R.string.history_action_delete))
                     }
@@ -185,14 +195,14 @@ fun RideDetailScreen(
                     TextMMD(
                         text = stringResource(R.string.ride_detail_title),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = { onAction(RideDetailAction.OnBackClick) }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.ride_detail_cd_back)
+                            contentDescription = stringResource(R.string.ride_detail_cd_back),
                         )
                     }
                 },
@@ -201,30 +211,31 @@ fun RideDetailScreen(
                         IconButton(onClick = { onAction(RideDetailAction.OnExportGpxClick) }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = stringResource(R.string.ride_detail_cd_export)
+                                contentDescription = stringResource(R.string.ride_detail_cd_export),
                             )
                         }
                         IconButton(onClick = { showConfirmDelete = true }) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
-                                contentDescription = stringResource(R.string.ride_detail_cd_delete)
+                                contentDescription = stringResource(R.string.ride_detail_cd_delete),
                             )
                         }
                     }
-                }
+                },
             )
         },
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
     ) { innerPadding ->
         val ride = state.ride
         if (ride == null) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(24.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
             ) {
                 if (!state.isLoading) {
                     TextMMD(text = stringResource(R.string.ride_detail_not_found))
@@ -232,12 +243,13 @@ fun RideDetailScreen(
             }
         } else {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 RideDetailSection(title = stringResource(R.string.ride_detail_section_time)) {
                     DetailRow(label = stringResource(R.string.ride_detail_start), value = ride.formattedDate)
@@ -254,7 +266,7 @@ fun RideDetailScreen(
 
                 RideDetailSection(
                     title = stringResource(R.string.ride_detail_section_additional),
-                    showDivider = state.trackPoints.isNotEmpty() || state.laps.isNotEmpty()
+                    showDivider = state.trackPoints.isNotEmpty() || state.laps.isNotEmpty(),
                 ) {
                     DetailRow(label = stringResource(R.string.ride_detail_elevation_gain), value = ride.elevationGainM)
                     DetailRow(label = stringResource(R.string.ride_detail_calories), value = ride.caloriesKcal)
@@ -264,15 +276,15 @@ fun RideDetailScreen(
                 if (state.trackPoints.isNotEmpty()) {
                     RideDetailSection(
                         title = stringResource(R.string.ride_detail_section_route),
-                        showDivider = state.laps.isNotEmpty()
+                        showDivider = state.laps.isNotEmpty(),
                     ) {
                         OutlinedButtonMMD(
                             onClick = { showRouteMap = true },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Map,
-                                contentDescription = null
+                                contentDescription = null,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             TextMMD(text = stringResource(R.string.ride_detail_show_route))
@@ -283,7 +295,7 @@ fun RideDetailScreen(
                 if (state.laps.isNotEmpty()) {
                     RideDetailSection(
                         title = stringResource(R.string.ride_detail_section_laps),
-                        showDivider = false
+                        showDivider = false,
                     ) {
                         LapHeaderRow()
                         state.laps.forEach { lap -> LapRow(lap) }
@@ -298,14 +310,14 @@ fun RideDetailScreen(
 private fun RideDetailSection(
     title: String,
     showDivider: Boolean = true,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TextMMD(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
         )
         content()
         if (showDivider) {
@@ -317,34 +329,35 @@ private fun RideDetailSection(
 @Composable
 private fun LapHeaderRow() {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         TextMMD(
             text = stringResource(R.string.ride_detail_lap_number),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.weight(0.8f)
+            modifier = Modifier.weight(0.8f),
         )
         TextMMD(
             text = stringResource(R.string.ride_detail_lap_distance),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.weight(1.4f)
+            modifier = Modifier.weight(1.4f),
         )
         TextMMD(
             text = stringResource(R.string.ride_detail_lap_time),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.weight(1.4f)
+            modifier = Modifier.weight(1.4f),
         )
         TextMMD(
             text = stringResource(R.string.ride_detail_lap_speed),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.weight(1.4f)
+            modifier = Modifier.weight(1.4f),
         )
     }
 }
@@ -352,12 +365,18 @@ private fun LapHeaderRow() {
 @Composable
 private fun LapRow(lap: RideLapUi) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        TextMMD(text = lap.lapNumber, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.8f))
+        TextMMD(
+            text = lap.lapNumber,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(0.8f),
+        )
         TextMMD(text = lap.distance, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1.4f))
         TextMMD(text = lap.time, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1.4f))
         TextMMD(text = lap.averageSpeed, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1.4f))
@@ -365,19 +384,23 @@ private fun LapRow(lap: RideLapUi) {
 }
 
 @Composable
-private fun DetailRow(label: String, value: String) {
+private fun DetailRow(
+    label: String,
+    value: String,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         TextMMD(text = label, style = MaterialTheme.typography.bodyLarge)
         TextMMD(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -387,22 +410,24 @@ private fun DetailRow(label: String, value: String) {
 private fun RideDetailScreenPreview() {
     InkRideTheme {
         RideDetailScreen(
-            state = RideDetailState(
-                isLoading = false,
-                ride = RideDetailUi(
-                    id = 1L,
-                    formattedDate = "14 Jun 2026, 08:32",
-                    formattedEndDate = "14 Jun 2026, 09:24",
-                    distanceKm = "18.42 km",
-                    movingTime = "00:48:12",
-                    elapsedTime = "00:52:01",
-                    averageSpeedKmh = "23.8 km/h",
-                    maxSpeedKmh = "51.3 km/h",
-                    elevationGainM = "312 m",
-                    caloriesKcal = "640 kcal",
-                    averagePowerWatts = "185 W"
-                )
-            ),
+            state =
+                RideDetailState(
+                    isLoading = false,
+                    ride =
+                        RideDetailUi(
+                            id = 1L,
+                            formattedDate = "14 Jun 2026, 08:32",
+                            formattedEndDate = "14 Jun 2026, 09:24",
+                            distanceKm = "18.42 km",
+                            movingTime = "00:48:12",
+                            elapsedTime = "00:52:01",
+                            averageSpeedKmh = "23.8 km/h",
+                            maxSpeedKmh = "51.3 km/h",
+                            elevationGainM = "312 m",
+                            caloriesKcal = "640 kcal",
+                            averagePowerWatts = "185 W",
+                        ),
+                ),
         ) { }
     }
 }
