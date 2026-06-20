@@ -285,14 +285,14 @@ class RideMetricsCalculator(
 
             val isMovingBasedOnGps = speedKmhFromGps >= autoPauseThresholdKmh
             val isSignificantMovement = effectiveSegmentDistanceM > (combinedAccuracyM * 0.5)
+            val isMovementSignal = isMovingBasedOnGps || isSignificantMovement
 
             // ── Stationary-drift protection ────────────────────────────────
             // When the rider appears stationary for several consecutive fixes,
             // require 2 consecutive "moving" confirmations before accumulating
             // distance. This prevents single-fix GPS wobble from adding false
             // distance when the device is truly stationary.
-            val isAppearsStationary = !isMovingBasedOnGps && !isSignificantMovement
-            if (isAppearsStationary) {
+            if (!isMovementSignal) {
                 consecutiveStationarySamples++
                 if (consecutiveStationarySamples >= 5) {
                     movingConfirmationsNeeded = 2
@@ -304,11 +304,12 @@ class RideMetricsCalculator(
                 }
             }
 
+            val isMovementConfirmationPending = isMovementSignal && movingConfirmationsNeeded > 0
+
             val effectiveDistanceM = when {
                 // Suppress all displacement until the GPS fix has converged.
                 !isGpsWarmedUp -> 0.0
-                isMovingBasedOnGps || isSignificantMovement ->
-                    if (movingConfirmationsNeeded > 0) 0.0 else effectiveSegmentDistanceM
+                isMovementSignal -> if (isMovementConfirmationPending) 0.0 else effectiveSegmentDistanceM
                 else -> 0.0
             }
 
@@ -320,7 +321,7 @@ class RideMetricsCalculator(
             }
 
             speedMps = speedMpsFromGps ?: speedMpsFromDistance
-            isActuallyMoving = isMovingBasedOnGps || isSignificantMovement
+            isActuallyMoving = isMovementSignal
 
             // Below the movement threshold the rider is treated as stopped, so
             // the live readout must be exactly 0. GPS Doppler reports a non-zero
@@ -358,7 +359,17 @@ class RideMetricsCalculator(
             val energyDtMs = locationDtMs.coerceAtMost(maxIntegrationGapMs)
 
             if (!isPaused) {
-                if (isActuallyMoving) {
+                // Gated on isMovementConfirmationPending too (not just
+                // isActuallyMoving) to stay in lockstep with effectiveDistanceM
+                // above: while a fix is still inside the stationary-drift
+                // confirmation window, distance is deliberately withheld. Without
+                // this, moving time would accumulate this fix's interval anyway —
+                // crediting moving time with no matching distance and deflating
+                // average speed (distance ÷ moving time) by ~1 fix-interval on
+                // every resume from a stop. Speed display, elevation/grade, power
+                // and calories stay on plain isActuallyMoving — only the
+                // distance/time pairing needs the extra caution.
+                if (isActuallyMoving && !isMovementConfirmationPending) {
                     movingTimeMs += locationDtMs
                 }
                 totalDistanceM += effectiveDistanceM

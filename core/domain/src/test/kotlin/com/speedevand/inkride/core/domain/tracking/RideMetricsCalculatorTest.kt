@@ -624,6 +624,34 @@ class RideMetricsCalculatorTest {
     }
 
     @Test
+    fun `moving time does not advance during the stationary-drift confirmation window`() {
+        // Same scenario as the suppressed-distance case above: 6 stationary
+        // samples arm the confirmation gate, then a single "moving" fix is
+        // suppressed for distance. Moving time must be suppressed for that same
+        // fix too — otherwise average speed (distance ÷ moving time) would be
+        // deflated by 1s of moving time with zero matching distance on every
+        // resume from a stop.
+        calculator.process(
+            sampleAt(0L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f),
+            settings
+        )
+        repeat(6) { i ->
+            calculator.process(
+                sampleAt((1000L * (i + 1)), speedFromGpsMps = null, accuracy = 50.0f),
+                settings
+            )
+        }
+        val metrics = calculator.process(
+            sampleAt(8000L, latitude = 0.0001, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f),
+            settings
+        )
+        assertThat(metrics.distanceKm).isZero()
+        // Moving time before this fix was 0 (no prior confirmed movement); it
+        // must still be 0 here, not advanced by this suppressed fix's interval.
+        assertThat(metrics.movingTimeSeconds).isZero()
+    }
+
+    @Test
     fun `two consecutive moving samples after stationary block resume distance`() {
         calculator.process(
             sampleAt(0L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f),
