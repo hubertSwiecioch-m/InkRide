@@ -43,6 +43,10 @@ data class TrackingState(
     // Both null when no route is loaded.
     val activeRoute: PlannedRoute? = null,
     val routeProgress: RouteProgress? = null,
+    // Mirrors the latest BleSample.connected while a ride is active. False both
+    // when nothing is paired and when a paired sensor has dropped — Task 7's UI
+    // combines this with the paired-address settings to tell the two apart.
+    val bleSensorConnected: Boolean = false,
 )
 
 /**
@@ -353,6 +357,7 @@ class RideTracker(
                                                     heartRateBpm = ble.heartRateBpm,
                                                     cadenceRpm = ble.cadenceRpm,
                                                 ),
+                                            bleSensorConnected = ble.connected,
                                         )
                                     }
                                 }

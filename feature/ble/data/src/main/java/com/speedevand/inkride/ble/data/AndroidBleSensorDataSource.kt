@@ -42,6 +42,13 @@ class AndroidBleSensorDataSource(
     @Volatile
     private var connectedAddresses: Set<String> = emptySet()
 
+    // Addresses with an actual live GATT connection right now (a subset of
+    // connectedAddresses — a desired address may still be reconnecting).
+    // Touched only from the GATT callback thread, which Android guarantees is
+    // serial, so no extra synchronization is needed beyond the ConcurrentHashMap
+    // key set already used for gatts/cadenceTrackers in this class.
+    private val liveAddresses: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     @Volatile
     private var latestHeartRate: Int? = null
 
@@ -83,6 +90,7 @@ class AndroidBleSensorDataSource(
         gatts.clear()
         cadenceTrackers.clear()
         pendingNotifications.clear()
+        liveAddresses.clear()
         connectedAddresses = emptySet()
         latestHeartRate = null
         latestCadence = null
@@ -97,6 +105,7 @@ class AndroidBleSensorDataSource(
                 heartRateBpm = latestHeartRate,
                 cadenceRpm = latestCadence,
                 wheelRevolutions = latestWheelRevolutions,
+                connected = liveAddresses.isNotEmpty(),
             )
     }
 
@@ -107,8 +116,23 @@ class AndroidBleSensorDataSource(
                 status: Int,
                 newState: Int,
             ) {
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    gatt.discoverServices()
+                val address = gatt.device?.address
+                when (newState) {
+                    BluetoothProfile.STATE_CONNECTED -> {
+                        address?.let { liveAddresses.add(it) }
+                        gatt.discoverServices()
+                    }
+
+                    BluetoothProfile.STATE_DISCONNECTED -> {
+                        address?.let { liveAddresses.remove(it) }
+                        // Don't let a stale reading from the now-gone sensor
+                        // linger — the rider should see it's disconnected, not
+                        // its last value forever.
+                        latestHeartRate = null
+                        latestCadence = null
+                        latestWheelRevolutions = null
+                        emit()
+                    }
                 }
             }
 

@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNull
@@ -255,6 +256,21 @@ class RideTrackerTest {
 
             assertThat(tracker.state.value.metrics.heartRateBpm).isEqualTo(142)
             assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(88)
+        }
+
+    @Test
+    fun `a BLE disconnect clears the connected flag`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(BleSample(timestampMs = 0L, heartRateBpm = 142, cadenceRpm = 88, connected = true))
+            assertThat(tracker.state.value.bleSensorConnected).isTrue()
+
+            ble.samples.emit(BleSample(timestampMs = 1000L, connected = false))
+            assertThat(tracker.state.value.bleSensorConnected).isFalse()
         }
 
     @Test
