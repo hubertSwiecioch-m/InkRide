@@ -72,12 +72,18 @@ class RideHistoryViewModel(
                             val points =
                                 when (val result = trackPointRepository.getPoints(action.id)) {
                                     is Result.Success -> result.data
-                                    is Result.Error -> emptyList()
+                                    is Result.Error -> {
+                                        _events.send(RideHistoryEvent.ShowError(result.error.toUiText()))
+                                        emptyList()
+                                    }
                                 }
                             val laps =
                                 when (val result = lapRepository.getLaps(action.id)) {
                                     is Result.Success -> result.data
-                                    is Result.Error -> emptyList()
+                                    is Result.Error -> {
+                                        _events.send(RideHistoryEvent.ShowError(result.error.toUiText()))
+                                        emptyList()
+                                    }
                                 }
                             recentlyDeletedRide = DeletedRideBundle(ride, points, laps)
                             rideHistoryRepository
@@ -101,9 +107,15 @@ class RideHistoryViewModel(
                             .onSuccess { newId ->
                                 if (bundle.trackPoints.isNotEmpty()) {
                                     trackPointRepository.savePoints(newId, bundle.trackPoints)
+                                        .onFailure { error ->
+                                            _events.send(RideHistoryEvent.ShowError(error.toUiText()))
+                                        }
                                 }
                                 if (bundle.laps.isNotEmpty()) {
                                     lapRepository.saveLaps(newId, bundle.laps)
+                                        .onFailure { error ->
+                                            _events.send(RideHistoryEvent.ShowError(error.toUiText()))
+                                        }
                                 }
                             }.onFailure { error ->
                                 _events.send(RideHistoryEvent.ShowError(error.toUiText()))

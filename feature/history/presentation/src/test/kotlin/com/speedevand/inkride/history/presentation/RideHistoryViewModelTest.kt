@@ -3,6 +3,7 @@ package com.speedevand.inkride.history.presentation
 import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isInstanceOf
 import com.speedevand.inkride.core.domain.DataError
 import com.speedevand.inkride.core.domain.EmptyResult
 import com.speedevand.inkride.core.domain.Result
@@ -14,6 +15,7 @@ import com.speedevand.inkride.core.domain.history.RideTrackPointRepository
 import com.speedevand.inkride.core.domain.settings.UserSettings
 import com.speedevand.inkride.core.domain.settings.UserSettingsRepository
 import com.speedevand.inkride.core.domain.tracking.LapRecord
+import com.speedevand.inkride.core.presentation.toUiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -220,6 +222,148 @@ class RideHistoryViewModelTest {
             assertThat(rideRepo.rides.size).isEqualTo(0)
         }
 
+    @Test
+    fun `delete ride with getPoints failure sends error event`() =
+        runTest {
+            val ride =
+                RideRecord(
+                    id = 1L,
+                    startTimestamp = 0L,
+                    endTimestamp = 1000L,
+                    distanceKm = 10.0,
+                    movingTimeSeconds = 600L,
+                    elapsedTimeSeconds = 1200L,
+                    averageSpeedKmh = 20.0,
+                    maxSpeedKmh = 30.0,
+                    elevationGainM = 50.0,
+                    caloriesKcal = 200.0,
+                )
+            rideRepo.rides.add(ride)
+            trackPointRepo.getPointsError = DataError.Local.UNKNOWN
+
+            val viewModel = viewModel()
+
+            viewModel.events.test {
+                viewModel.onAction(RideHistoryAction.OnDeleteRide(1L))
+                val errorEvent = awaitItem()
+                assertThat(errorEvent).isInstanceOf<RideHistoryEvent.ShowError>()
+                val undoEvent = awaitItem()
+                assertThat(undoEvent).isEqualTo(RideHistoryEvent.ShowUndoSnackbar)
+                // Verify ride was still deleted despite error
+                assertThat(rideRepo.rides.size).isEqualTo(0)
+            }
+        }
+
+    @Test
+    fun `delete ride with getLaps failure sends error event`() =
+        runTest {
+            val ride =
+                RideRecord(
+                    id = 1L,
+                    startTimestamp = 0L,
+                    endTimestamp = 1000L,
+                    distanceKm = 10.0,
+                    movingTimeSeconds = 600L,
+                    elapsedTimeSeconds = 1200L,
+                    averageSpeedKmh = 20.0,
+                    maxSpeedKmh = 30.0,
+                    elevationGainM = 50.0,
+                    caloriesKcal = 200.0,
+                )
+            rideRepo.rides.add(ride)
+            lapRepo.getLapsError = DataError.Local.UNKNOWN
+
+            val viewModel = viewModel()
+
+            viewModel.events.test {
+                viewModel.onAction(RideHistoryAction.OnDeleteRide(1L))
+                val errorEvent = awaitItem()
+                assertThat(errorEvent).isInstanceOf<RideHistoryEvent.ShowError>()
+                val undoEvent = awaitItem()
+                assertThat(undoEvent).isEqualTo(RideHistoryEvent.ShowUndoSnackbar)
+                // Verify ride was still deleted despite error
+                assertThat(rideRepo.rides.size).isEqualTo(0)
+            }
+        }
+
+    @Test
+    fun `undo delete with savePoints failure sends error event`() =
+        runTest {
+            val ride =
+                RideRecord(
+                    id = 1L,
+                    startTimestamp = 0L,
+                    endTimestamp = 1000L,
+                    distanceKm = 10.0,
+                    movingTimeSeconds = 600L,
+                    elapsedTimeSeconds = 1200L,
+                    averageSpeedKmh = 20.0,
+                    maxSpeedKmh = 30.0,
+                    elevationGainM = 50.0,
+                    caloriesKcal = 200.0,
+                )
+            rideRepo.rides.add(ride)
+            val points = listOf(RideTrackPoint(timestampMs = 0L, latitude = 52.0, longitude = 21.0))
+            trackPointRepo.saved[1L] = points
+
+            val viewModel = viewModel()
+
+            // Delete the ride (consume events from delete)
+            viewModel.events.test {
+                viewModel.onAction(RideHistoryAction.OnDeleteRide(1L))
+                awaitItem() // ShowUndoSnackbar
+            }
+
+            // Set up save error for undo
+            trackPointRepo.savePointsError = DataError.Local.UNKNOWN
+
+            // Undo and check for error
+            viewModel.events.test {
+                viewModel.onAction(RideHistoryAction.OnUndoDelete)
+                val errorEvent = awaitItem()
+                assertThat(errorEvent).isInstanceOf<RideHistoryEvent.ShowError>()
+            }
+        }
+
+    @Test
+    fun `undo delete with saveLaps failure sends error event`() =
+        runTest {
+            val ride =
+                RideRecord(
+                    id = 1L,
+                    startTimestamp = 0L,
+                    endTimestamp = 1000L,
+                    distanceKm = 10.0,
+                    movingTimeSeconds = 600L,
+                    elapsedTimeSeconds = 1200L,
+                    averageSpeedKmh = 20.0,
+                    maxSpeedKmh = 30.0,
+                    elevationGainM = 50.0,
+                    caloriesKcal = 200.0,
+                )
+            rideRepo.rides.add(ride)
+            val laps = listOf(LapRecord(lapNumber = 1, distanceKm = 5.0, movingTimeSeconds = 300L, averageSpeedKmh = 20.0, elevationGainM = 10.0))
+            lapRepo.saved[1L] = laps
+
+            val viewModel = viewModel()
+
+            // Delete the ride (consume events from delete)
+            viewModel.events.test {
+                viewModel.onAction(RideHistoryAction.OnDeleteRide(1L))
+                awaitItem() // ShowUndoSnackbar
+            }
+
+            // Set up save error for undo
+            lapRepo.saveLapsError = DataError.Local.UNKNOWN
+
+            // Undo and check for error
+            viewModel.events.test {
+                viewModel.onAction(RideHistoryAction.OnUndoDelete)
+                val errorEvent = awaitItem()
+                assertThat(errorEvent).isInstanceOf<RideHistoryEvent.ShowError>()
+            }
+        }
+
     class FakeRideHistoryRepository : RideHistoryRepository {
         val rides = mutableListOf<RideRecord>()
 
@@ -253,31 +397,41 @@ class RideHistoryViewModelTest {
 
     class FakeTrackPointRepository : RideTrackPointRepository {
         val saved = mutableMapOf<Long, List<RideTrackPoint>>()
+        var getPointsError: DataError.Local? = null
+        var savePointsError: DataError.Local? = null
 
         override suspend fun savePoints(
             rideId: Long,
             points: List<RideTrackPoint>,
         ): EmptyResult<DataError.Local> {
-            saved[rideId] = points
-            return Result.Success(Unit)
+            return savePointsError?.let { Result.Error(it) } ?: run {
+                saved[rideId] = points
+                Result.Success(Unit)
+            }
         }
 
         override suspend fun getPoints(rideId: Long): Result<List<RideTrackPoint>, DataError.Local> =
-            Result.Success(saved[rideId] ?: emptyList())
+            getPointsError?.let { Result.Error(it) }
+                ?: Result.Success(saved[rideId] ?: emptyList())
     }
 
     class FakeLapRepository : RideLapRepository {
         val saved = mutableMapOf<Long, List<LapRecord>>()
+        var getLapsError: DataError.Local? = null
+        var saveLapsError: DataError.Local? = null
 
         override suspend fun saveLaps(
             rideId: Long,
             laps: List<LapRecord>,
         ): EmptyResult<DataError.Local> {
-            saved[rideId] = laps
-            return Result.Success(Unit)
+            return saveLapsError?.let { Result.Error(it) } ?: run {
+                saved[rideId] = laps
+                Result.Success(Unit)
+            }
         }
 
         override suspend fun getLaps(rideId: Long): Result<List<LapRecord>, DataError.Local> =
-            Result.Success(saved[rideId] ?: emptyList())
+            getLapsError?.let { Result.Error(it) }
+                ?: Result.Success(saved[rideId] ?: emptyList())
     }
 }
