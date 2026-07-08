@@ -224,7 +224,9 @@ fun DashboardScreen(
 
                 InfoBar(
                     metrics = state.rideMetrics,
-                    sensorPaired = state.userSettings.pairedHrmAddress != null || state.userSettings.pairedCadenceAddress != null,
+                    sensorPaired =
+                        state.status != TrackingStatus.IDLE &&
+                            (state.userSettings.pairedHrmAddress != null || state.userSettings.pairedCadenceAddress != null),
                     sensorConnected = state.bleSensorConnected,
                 )
 
