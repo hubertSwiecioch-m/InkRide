@@ -320,6 +320,43 @@ class RideTrackerTest {
             collectorScope.cancel()
         }
 
+    @Test
+    fun `cadence drops to zero after 3 seconds without a fresh BLE update`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(
+                BleSample(timestampMs = 0L, heartRateBpm = 142, cadenceRpm = 88, cadenceUpdatedAtMs = 0L, connected = true),
+            )
+            assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(88)
+
+            // A GPS fix 3.5s later with no intervening cadence update: cadence
+            // should read 0 (the sensor stopped notifying), while HR is unaffected.
+            sensor.samples.emit(sampleAt(3_500L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f))
+
+            assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(0)
+            assertThat(tracker.state.value.metrics.heartRateBpm).isEqualTo(142)
+        }
+
+    @Test
+    fun `a fresh cadence update before the timeout keeps the real value`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(BleSample(timestampMs = 0L, cadenceRpm = 88, cadenceUpdatedAtMs = 0L, connected = true))
+            ble.samples.emit(BleSample(timestampMs = 2_000L, cadenceRpm = 90, cadenceUpdatedAtMs = 2_000L, connected = true))
+            // 4500 - 2000 = 2500ms since the last cadence update, under the 3000ms timeout.
+            sensor.samples.emit(sampleAt(4_500L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f))
+
+            assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(90)
+        }
+
     private fun newTracker(
         scheduler: TestCoroutineScheduler,
         sensor: FakeSensorDataSource,

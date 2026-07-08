@@ -62,6 +62,9 @@ class AndroidBleSensorDataSource(
     private var latestCadence: Int? = null
 
     @Volatile
+    private var lastCadenceUpdateAtMs: Long? = null
+
+    @Volatile
     private var latestWheelRevolutions: Long? = null
 
     override fun observeSamples(): Flow<BleSample> = samples
@@ -100,6 +103,7 @@ class AndroidBleSensorDataSource(
         connectedAddresses = emptySet()
         latestHeartRate = null
         latestCadence = null
+        lastCadenceUpdateAtMs = null
         latestWheelRevolutions = null
         emit()
     }
@@ -112,6 +116,7 @@ class AndroidBleSensorDataSource(
                 cadenceRpm = latestCadence,
                 wheelRevolutions = latestWheelRevolutions,
                 connected = liveAddresses.isNotEmpty(),
+                cadenceUpdatedAtMs = lastCadenceUpdateAtMs,
             )
     }
 
@@ -136,6 +141,7 @@ class AndroidBleSensorDataSource(
                         // its last value forever.
                         latestHeartRate = null
                         latestCadence = null
+                        lastCadenceUpdateAtMs = null
                         latestWheelRevolutions = null
                         emit()
                     }
@@ -204,7 +210,10 @@ class AndroidBleSensorDataSource(
             BleGatt.CSC_MEASUREMENT -> {
                 val tracker = address?.let { cadenceTrackers[it] } ?: return
                 val result = tracker.update(data) ?: return
-                result.cadenceRpm?.let { latestCadence = it }
+                result.cadenceRpm?.let {
+                    latestCadence = it
+                    lastCadenceUpdateAtMs = System.currentTimeMillis()
+                }
                 result.wheelRevolutions?.let { latestWheelRevolutions = it }
                 emit()
             }

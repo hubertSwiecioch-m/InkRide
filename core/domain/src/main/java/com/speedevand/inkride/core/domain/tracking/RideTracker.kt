@@ -117,6 +117,16 @@ class RideTracker(
     @Volatile
     private var lowSpeedSinceMs: Long? = null
 
+    // Timestamp (BLE sample clock) of the most recent cadence value actually
+    // reported by a CSC sensor. Distinguishes "cadence is still arriving"
+    // from "cadence is stale because the crank stopped and the sensor went
+    // quiet" — most CSC sensors stop notifying entirely rather than sending
+    // an explicit 0 rpm once the crank stops turning.
+    @Volatile
+    private var lastCadenceUpdateAtMs: Long? = null
+
+    private val cadenceTimeoutMs: Long = 3_000L
+
     // In-memory GPS track for the current ride, flushed to the database (keyed by
     // the new ride's id) at stop. Guarded by [trackPointsLock] because it's
     // appended from the sample-collection coroutine but snapshotted/cleared from
@@ -234,6 +244,7 @@ class RideTracker(
         bleSensorDataSource.disconnect()
         metricsCalculator.reset()
         lowSpeedSinceMs = null
+        lastCadenceUpdateAtMs = null
         resetAlertState()
         resetLapBaseline()
         _state.value = TrackingState()
@@ -250,6 +261,7 @@ class RideTracker(
                 sessionStartMs = System.currentTimeMillis()
                 metricsCalculator.reset()
                 lowSpeedSinceMs = null
+                lastCadenceUpdateAtMs = null
                 resetAlertState()
                 resetLapBaseline()
                 synchronized(trackPointsLock) { trackPoints.clear() }
@@ -337,6 +349,7 @@ class RideTracker(
                 val bleJob =
                     launch {
                         bleSensorDataSource.observeSamples().collect { ble ->
+                            ble.cadenceUpdatedAtMs?.let { lastCadenceUpdateAtMs = it }
                             val updated =
                                 _state.updateAndGet { current ->
                                     if (current.status == TrackingStatus.IDLE) {
@@ -346,7 +359,7 @@ class RideTracker(
                                             metrics =
                                                 current.metrics.copy(
                                                     heartRateBpm = ble.heartRateBpm,
-                                                    cadenceRpm = ble.cadenceRpm,
+                                                    cadenceRpm = cadenceOrZeroIfStale(ble.cadenceRpm, ble.timestampMs),
                                                 ),
                                             bleSensorConnected = ble.connected,
                                         )
@@ -392,7 +405,7 @@ class RideTracker(
                                 val metrics =
                                     baseMetrics.copy(
                                         heartRateBpm = current.metrics.heartRateBpm,
-                                        cadenceRpm = current.metrics.cadenceRpm,
+                                        cadenceRpm = cadenceOrZeroIfStale(current.metrics.cadenceRpm, sample.timestampMs),
                                     )
                                 current.copy(status = resolved, metrics = metrics, routeProgress = progress)
                             }
@@ -443,6 +456,19 @@ class RideTracker(
                 current
             }
         }
+
+    /**
+     * Returns 0 once more than [cadenceTimeoutMs] has passed since the last
+     * actual cadence notification, instead of freezing at the last reported
+     * value.
+     */
+    private fun cadenceOrZeroIfStale(
+        rawCadenceRpm: Int?,
+        nowMs: Long,
+    ): Int? {
+        val lastUpdate = lastCadenceUpdateAtMs ?: return rawCadenceRpm
+        return if (nowMs - lastUpdate > cadenceTimeoutMs) 0 else rawCadenceRpm
+    }
 
     private fun resetAlertState() =
         synchronized(alertLock) {

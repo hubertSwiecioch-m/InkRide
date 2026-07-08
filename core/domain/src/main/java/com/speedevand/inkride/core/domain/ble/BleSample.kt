@@ -14,4 +14,11 @@ data class BleSample(
     val cadenceRpm: Int? = null,
     val wheelRevolutions: Long? = null,
     val connected: Boolean = false,
+    // Wall-clock timestamp of the last CSC notification that actually carried
+    // a cadence value. Null when cadence has never been reported. Distinct
+    // from [timestampMs] (this emission's own time) because most CSC sensors
+    // keep the last cadence cached and re-emit it alongside unrelated HR
+    // notifications, without a fresh crank event — this field lets a
+    // consumer tell "cadence is still arriving" from "cadence is stale".
+    val cadenceUpdatedAtMs: Long? = null,
 )
