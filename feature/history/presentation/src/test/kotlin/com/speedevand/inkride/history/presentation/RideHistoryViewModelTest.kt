@@ -177,7 +177,8 @@ class RideHistoryViewModelTest {
                 )
             rideRepo.rides.add(ride)
             val points = listOf(RideTrackPoint(timestampMs = 0L, latitude = 52.0, longitude = 21.0))
-            val laps = listOf(LapRecord(lapNumber = 1, distanceKm = 5.0, movingTimeSeconds = 300L, averageSpeedKmh = 20.0, elevationGainM = 10.0))
+            val laps =
+                listOf(LapRecord(lapNumber = 1, distanceKm = 5.0, movingTimeSeconds = 300L, averageSpeedKmh = 20.0, elevationGainM = 10.0))
             trackPointRepo.saved[1L] = points
             lapRepo.saved[1L] = laps
 
@@ -345,7 +346,8 @@ class RideHistoryViewModelTest {
                     caloriesKcal = 200.0,
                 )
             rideRepo.rides.add(ride)
-            val laps = listOf(LapRecord(lapNumber = 1, distanceKm = 5.0, movingTimeSeconds = 300L, averageSpeedKmh = 20.0, elevationGainM = 10.0))
+            val laps =
+                listOf(LapRecord(lapNumber = 1, distanceKm = 5.0, movingTimeSeconds = 300L, averageSpeedKmh = 20.0, elevationGainM = 10.0))
             lapRepo.saved[1L] = laps
 
             val viewModel = viewModel()
@@ -409,12 +411,11 @@ class RideHistoryViewModelTest {
         override suspend fun savePoints(
             rideId: Long,
             points: List<RideTrackPoint>,
-        ): EmptyResult<DataError.Local> {
-            return savePointsError?.let { Result.Error(it) } ?: run {
+        ): EmptyResult<DataError.Local> =
+            savePointsError?.let { Result.Error(it) } ?: run {
                 saved[rideId] = points
                 Result.Success(Unit)
             }
-        }
 
         override suspend fun getPoints(rideId: Long): Result<List<RideTrackPoint>, DataError.Local> =
             getPointsError?.let { Result.Error(it) }
@@ -429,12 +430,11 @@ class RideHistoryViewModelTest {
         override suspend fun saveLaps(
             rideId: Long,
             laps: List<LapRecord>,
-        ): EmptyResult<DataError.Local> {
-            return saveLapsError?.let { Result.Error(it) } ?: run {
+        ): EmptyResult<DataError.Local> =
+            saveLapsError?.let { Result.Error(it) } ?: run {
                 saved[rideId] = laps
                 Result.Success(Unit)
             }
-        }
 
         override suspend fun getLaps(rideId: Long): Result<List<LapRecord>, DataError.Local> =
             getLapsError?.let { Result.Error(it) }

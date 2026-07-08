@@ -71,7 +71,10 @@ class RideHistoryViewModel(
                         .onSuccess { ride ->
                             val points =
                                 when (val result = trackPointRepository.getPoints(action.id)) {
-                                    is Result.Success -> result.data
+                                    is Result.Success -> {
+                                        result.data
+                                    }
+
                                     is Result.Error -> {
                                         _events.send(RideHistoryEvent.ShowError(result.error.toUiText()))
                                         emptyList()
@@ -79,7 +82,10 @@ class RideHistoryViewModel(
                                 }
                             val laps =
                                 when (val result = lapRepository.getLaps(action.id)) {
-                                    is Result.Success -> result.data
+                                    is Result.Success -> {
+                                        result.data
+                                    }
+
                                     is Result.Error -> {
                                         _events.send(RideHistoryEvent.ShowError(result.error.toUiText()))
                                         emptyList()
@@ -106,13 +112,15 @@ class RideHistoryViewModel(
                             .save(bundle.ride)
                             .onSuccess { newId ->
                                 if (bundle.trackPoints.isNotEmpty()) {
-                                    trackPointRepository.savePoints(newId, bundle.trackPoints)
+                                    trackPointRepository
+                                        .savePoints(newId, bundle.trackPoints)
                                         .onFailure { error ->
                                             _events.send(RideHistoryEvent.ShowError(error.toUiText()))
                                         }
                                 }
                                 if (bundle.laps.isNotEmpty()) {
-                                    lapRepository.saveLaps(newId, bundle.laps)
+                                    lapRepository
+                                        .saveLaps(newId, bundle.laps)
                                         .onFailure { error ->
                                             _events.send(RideHistoryEvent.ShowError(error.toUiText()))
                                         }
