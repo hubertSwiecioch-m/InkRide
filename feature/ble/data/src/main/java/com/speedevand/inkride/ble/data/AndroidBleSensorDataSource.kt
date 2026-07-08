@@ -44,9 +44,15 @@ class AndroidBleSensorDataSource(
 
     // Addresses with an actual live GATT connection right now (a subset of
     // connectedAddresses — a desired address may still be reconnecting).
-    // Touched only from the GATT callback thread, which Android guarantees is
-    // serial, so no extra synchronization is needed beyond the ConcurrentHashMap
-    // key set already used for gatts/cadenceTrackers in this class.
+    // Mutated from the GATT callback thread (onConnectionStateChange) and from
+    // disconnect() (called from the settings-driven connect() coroutine and
+    // from RideTracker.stop()), so this is genuinely cross-thread. A
+    // ConcurrentHashMap-backed set keeps individual add/remove/clear calls
+    // safe from corruption; the narrow remaining race — a stray
+    // STATE_CONNECTED from a gatt being torn down landing just after
+    // disconnect()'s clear() — can leave `connected` transiently stale for
+    // one BLE cycle, self-correcting on that gatt's own STATE_DISCONNECTED.
+    // Acceptable for a best-effort UI indicator, not safety-critical state.
     private val liveAddresses: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     @Volatile
