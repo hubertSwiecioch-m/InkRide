@@ -17,6 +17,13 @@ class CaloriesEstimator {
      * Grade awareness: riding uphill requires significantly more energy;
      * downhill provides less braking-resistance credit (floor at 2 MET coasting).
      *
+     * A power-based alternative (kcal derived from [PowerEstimator]'s
+     * estimated watts) was considered and deliberately rejected: PowerEstimator
+     * itself carries a documented ±30-60% accuracy ceiling (dominated by
+     * unmeasured wind), so deriving calories from it would compound one
+     * uncertain estimate on top of another rather than improve on this
+     * MET-based model, which only requires speed/grade/weight/age.
+     *
      * @param speedKmh current speed in km/h
      * @param intervalMs time interval of this sample in milliseconds
      * @param gradePercent current grade in percent (e.g. 5.0 = 5% uphill)
