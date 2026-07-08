@@ -18,6 +18,7 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.speedevand.inkride.core.domain.EmptyResult
 import com.speedevand.inkride.core.domain.Result
+import com.speedevand.inkride.core.domain.tracking.HeadingSmoother
 import com.speedevand.inkride.core.domain.tracking.RideSensorDataSource
 import com.speedevand.inkride.core.domain.tracking.RideSensorSample
 import com.speedevand.inkride.core.domain.tracking.SensorError
@@ -62,12 +63,7 @@ class AndroidRideSensorDataSource(
     // True-north heading (magnetic reading + declination), circular-EMA smoothed.
     private var lastHeading: Float? = null
 
-    // Raw smoothed magnetic heading state for the circular EMA filter.
-    private var smoothedHeadingDeg: Float? = null
-
-    // Last heading actually emitted — used to throttle emissions to ~2° steps,
-    // matching the E-Ink compass's discrete rendering and cutting sample churn.
-    private var lastEmittedHeadingDeg: Float? = null
+    private val headingSmoother = HeadingSmoother()
 
     // Magnetic declination (degrees to add to a magnetic heading to get true
     // north), refreshed from the current location. 0 until the first fix.
@@ -78,13 +74,6 @@ class AndroidRideSensorDataSource(
     // ground is still used when moving). Unknown accuracy is treated as usable
     // so devices that never fire onAccuracyChanged still get a compass.
     private var isMagnetometerUnreliable: Boolean = false
-
-    // Heading is only emitted when it changes by at least this many degrees.
-    private val headingEmitThresholdDeg: Float = 2.0f
-
-    // EMA smoothing factor for the magnetometer heading (higher = more responsive,
-    // lower = smoother). 0.2 tames magnetometer jitter without feeling laggy.
-    private val headingSmoothingAlpha: Float = 0.2f
 
     // Above this speed, GPS course-over-ground is more trustworthy than the
     // magnetometer (which is easily disturbed by the bike frame and phone).
@@ -170,28 +159,14 @@ class AndroidRideSensorDataSource(
                             val orientation = FloatArray(3)
                             SensorManager.getOrientation(r, orientation)
                             val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                            // Convert magnetic azimuth to a true-north heading.
-                            val magneticHeading = (azimuth + 360f) % 360f
-                            val trueHeading = (magneticHeading + magneticDeclinationDeg + 360f) % 360f
 
-                            // Circular EMA: blend along the shortest arc so the filter
-                            // doesn't lurch the long way around the 0/360 wrap point.
-                            val smoothed =
-                                smoothedHeadingDeg?.let { prev ->
-                                    val delta = angularDifference(prev, trueHeading)
-                                    (prev + headingSmoothingAlpha * delta + 360f) % 360f
-                                } ?: trueHeading
-                            smoothedHeadingDeg = smoothed
-                            lastHeading = smoothed
+                            val update = headingSmoother.update(azimuth, magneticDeclinationDeg)
+                            lastHeading = update.smoothedHeadingDeg
                             lastHeadingTimestampMs = System.currentTimeMillis()
 
                             // Throttle emissions to ~2° steps to avoid flooding the
                             // sample flow (and the E-Ink redraw) with micro-changes.
-                            val emitted = lastEmittedHeadingDeg
-                            if (emitted == null || Math.abs(angularDifference(emitted, smoothed)) >= headingEmitThresholdDeg) {
-                                lastEmittedHeadingDeg = smoothed
-                                emitSample()
-                            }
+                            if (update.shouldEmit) emitSample()
                         }
                     }
                 }
@@ -386,8 +361,7 @@ class AndroidRideSensorDataSource(
         lastLocation = null
         lastPressureHpa = null
         lastHeading = null
-        smoothedHeadingDeg = null
-        lastEmittedHeadingDeg = null
+        headingSmoother.reset()
         magneticDeclinationDeg = 0f
         isMagnetometerUnreliable = false
         lastSatelliteCount = null
@@ -395,20 +369,6 @@ class AndroidRideSensorDataSource(
         lastPressureTimestampMs = 0L
         lastHeadingTimestampMs = 0L
         lastPressureEmitTimestampMs = 0L
-    }
-
-    /**
-     * Shortest signed angular difference from [from] to [to], in degrees,
-     * within (-180, 180]. Used so circular EMA and threshold checks move along
-     * the short arc across the 0/360 wrap point.
-     */
-    private fun angularDifference(
-        from: Float,
-        to: Float,
-    ): Float {
-        var diff = (to - from + 540f) % 360f - 180f
-        if (diff == -180f) diff = 180f
-        return diff
     }
 
     private fun hasLocationPermission(): Boolean {
