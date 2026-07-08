@@ -15,6 +15,7 @@ import com.speedevand.inkride.core.CoreConstants.UNIT_MPH
 import com.speedevand.inkride.core.CoreConstants.UNIT_W
 import com.speedevand.inkride.core.domain.history.RideRecord
 import com.speedevand.inkride.core.domain.settings.MeasurementUnits
+import com.speedevand.inkride.core.domain.tracking.ElevationProfile
 import com.speedevand.inkride.core.domain.tracking.LapRecord
 import com.speedevand.inkride.core.presentation.UiText
 import com.speedevand.inkride.core.toClockString
@@ -26,6 +27,7 @@ data class RideDetailState(
     val ride: RideDetailUi? = null,
     val laps: List<RideLapUi> = emptyList(),
     val trackPoints: List<TrackPointUi> = emptyList(),
+    val elevationChart: ElevationChartUi? = null,
     val isLoading: Boolean = true,
 )
 
@@ -38,6 +40,33 @@ data class TrackPointUi(
     val lat: Double,
     val lng: Double,
 )
+
+data class ElevationPointUi(
+    val distanceKm: Double,
+    val altitudeM: Double,
+)
+
+data class ElevationChartUi(
+    val points: List<ElevationPointUi>,
+    val maxAltitudeLabel: String,
+    val maxAltitudeDistanceFraction: Float,
+    val minAltitudeLabel: String,
+    val minAltitudeDistanceFraction: Float,
+)
+
+fun ElevationProfile.toChartUi(units: MeasurementUnits = MeasurementUnits.METRIC): ElevationChartUi {
+    val altitudeFactor = if (units == MeasurementUnits.IMPERIAL) 3.28084 else 1.0
+    val altitudeUnit = if (units == MeasurementUnits.IMPERIAL) UNIT_FT else UNIT_M
+    val totalDistanceKm = points.last().distanceKm.let { if (it > 0.0) it else 1.0 }
+
+    return ElevationChartUi(
+        points = points.map { ElevationPointUi(it.distanceKm, it.altitudeM) },
+        maxAltitudeLabel = String.format(Locale.US, "$FORMAT_NO_DECIMALS $altitudeUnit", maxAltitudeM * altitudeFactor),
+        maxAltitudeDistanceFraction = (maxAltitudeDistanceKm / totalDistanceKm).toFloat().coerceIn(0f, 1f),
+        minAltitudeLabel = String.format(Locale.US, "$FORMAT_NO_DECIMALS $altitudeUnit", minAltitudeM * altitudeFactor),
+        minAltitudeDistanceFraction = (minAltitudeDistanceKm / totalDistanceKm).toFloat().coerceIn(0f, 1f),
+    )
+}
 
 data class RideLapUi(
     val lapNumber: String,
