@@ -152,7 +152,7 @@ class RideDetailViewModelTest {
         }
 
     @Test
-    fun `track points without altitude leave the elevation chart null`() =
+    fun `track points without altitude are still loaded for the route map, but leave the elevation chart null`() =
         runTest {
             rideRepo.setRide(sampleRide)
             trackPointRepo.points =
@@ -162,6 +162,9 @@ class RideDetailViewModelTest {
                 )
             val viewModel = RideDetailViewModel(1L, rideRepo, lapRepo, trackPointRepo, settingsRepo, gpxExporter)
 
+            assertThat(viewModel.state.value.trackPoints).isEqualTo(
+                listOf(TrackPointUi(52.0, 21.0), TrackPointUi(52.01, 21.0)),
+            )
             assertThat(viewModel.state.value.elevationChart).isNull()
         }
 
