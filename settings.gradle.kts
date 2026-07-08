@@ -26,12 +26,9 @@ dependencyResolutionManagement {
 rootProject.name = "InkRide"
 include(":app")
 include(":core:domain")
-include(":core:data")
 include(":core:database")
 include(":core:presentation")
 include(":core:design-system")
-include(":feature:dashboard:domain")
-include(":feature:dashboard:data")
 include(":feature:dashboard:presentation")
 include(":feature:history:data")
 include(":feature:history:presentation")
