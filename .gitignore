@@ -34,6 +34,7 @@ keystore.base64.txt
 # AI / Agents & internal planning docs (not published)
 .agents/
 .claude/
+.superpowers/
 AGENTS.md
 GEMINI.md
 CLAUDE.md
