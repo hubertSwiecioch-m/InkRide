@@ -17,7 +17,7 @@
 - Kalman filter gating: chi-square bound for 2 degrees of freedom at ~99% confidence = 9.21.
 - No new `UserSettings` fields and no database schema/migration changes anywhere in this round.
 - `CaloriesEstimator`'s formula is explicitly out of scope — item 5 is a documentation-only change.
-- The Kalman filter lives in `AndroidRideSensorDataSource` (the Android-facing data source), never inside `RideMetricsCalculator`. `RideMetricsCalculator.kt` and `RideMetricsCalculatorTest.kt` must not be modified by this plan, and the full existing `:core:domain:test` suite must keep passing unchanged after every task.
+- The Kalman filter (Tasks 7–8) lives in `AndroidRideSensorDataSource` (the Android-facing data source), never inside `RideMetricsCalculator`. Tasks 7–8 must not modify `RideMetricsCalculator.kt` or `RideMetricsCalculatorTest.kt`. (Task 6 is the one sanctioned exception to touching `RideMetricsCalculator.kt` in this plan — a single call-site change threading `altitudeM` through, specified explicitly in that task — and must not modify `RideMetricsCalculatorTest.kt` either.) The full existing `:core:domain:test` suite must keep passing unchanged after every task.
 - `RideTracker`'s constructor is called positionally in `feature/tracking/data/src/main/java/com/speedevand/inkride/tracking/data/TrackingDataModule.kt:17` (`RideTracker(get(), get(), get(), get(), get(), get(), get())`, matching its first 7 required parameters). Any new constructor parameter must be added as a trailing-defaulted parameter *after* those 7, so this line keeps compiling unchanged — verify this file still compiles after every task that touches `RideTracker`'s constructor.
 
 ---
