@@ -86,10 +86,12 @@ class RideMetricsCalculator(
     private val gradePoints = ArrayDeque<Pair<Double, Double>>()
     private var currentGrade: Double = 0.0
 
-    // Bounce detection: track the last 3 position-bearing samples (lat, lng).
-    // When GPS jumps away and immediately returns, the middle sample is an
-    // artifact that should be rejected.
-    private val recentPositions = ArrayDeque<Pair<Double, Double>>(3)
+    // Bounce detection: track the last 3 position-bearing samples along with
+    // the distance each contributed to totalDistanceM. When GPS jumps away
+    // and immediately returns, the middle sample is an artifact — and its
+    // distance (already added to totalDistanceM on a prior call) must be
+    // reversed, not just the return leg's.
+    private val recentPositions = ArrayDeque<Triple<Double, Double, Double>>(3)
 
     // Stationary-drift protection: counts consecutive samples where the rider
     // appears stationary. After 5+ stationary samples, require 2 consecutive
@@ -180,6 +182,13 @@ class RideMetricsCalculator(
         // intermediate non-location samples don't reset the live readout.
         var speedMps = lastReportedSpeedMps
         var isActuallyMoving = false
+
+        // Distance this fix actually contributed to totalDistanceM (0 if
+        // rejected as an outlier, paused, or otherwise suppressed). Recorded
+        // alongside the position in recentPositions so a later-confirmed
+        // bounce can reverse exactly what this fix added — see the isBounce
+        // handling below.
+        var appliedDistanceM = 0.0
 
         // Set when a location fix is rejected as a positional outlier. Such a fix
         // must not be adopted as the positional reference for the next segment,
@@ -354,7 +363,20 @@ class RideMetricsCalculator(
                 if (isActuallyMoving) {
                     movingTimeMs += integrationDtMs
                 }
+                appliedDistanceM = effectiveDistanceM
                 totalDistanceM += effectiveDistanceM
+                // A confirmed bounce means the jump leg (recorded at
+                // recentPositions[1]) was itself a GPS artifact that already
+                // added its distance on a prior call — reverse it now so a
+                // jump-then-bounce pattern doesn't permanently inflate total
+                // distance. Zeroing the stored distance after reversing
+                // guards against double-subtracting it if a later fix also
+                // reads as a bounce against the same stale reference pair.
+                if (isBounce && recentPositions.size >= 3) {
+                    val middle = recentPositions[1]
+                    totalDistanceM = (totalDistanceM - middle.third).coerceAtLeast(0.0)
+                    recentPositions[1] = middle.copy(third = 0.0)
+                }
                 maxSpeedMps = max(maxSpeedMps, speedMps)
                 caloriesKcal +=
                     caloriesEstimator.estimateKcal(
@@ -451,8 +473,9 @@ class RideMetricsCalculator(
         // fix is correctly measured across the (capped) gap instead.
         if (sample.latitude != null && sample.longitude != null && !locationOutlierRejected) {
             lastLocationSample = sample
-            // Maintain a ring buffer of the last 3 GPS positions for bounce detection.
-            recentPositions.addLast(sample.latitude to sample.longitude)
+            // Maintain a ring buffer of the last 3 GPS positions (plus the
+            // distance each contributed) for bounce detection.
+            recentPositions.addLast(Triple(sample.latitude, sample.longitude, appliedDistanceM))
             while (recentPositions.size > 3) {
                 recentPositions.removeFirst()
             }

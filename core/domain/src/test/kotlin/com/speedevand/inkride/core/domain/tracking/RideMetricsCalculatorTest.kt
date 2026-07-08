@@ -417,29 +417,41 @@ class RideMetricsCalculatorTest {
     }
 
     @Test
-    fun `bounce detection rejects return leg of GPS jump-bounce`() {
-        // Position A
-        calculator.process(
-            sampleAt(0L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f),
-            settings,
-        )
-        // Position B: jump ~555m away (glitch)
-        calculator.process(
-            sampleAt(1000L, latitude = 0.005, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f),
-            settings,
-        )
-        // Position C: back within 5m of A — this is a bounce return
-        val metrics =
-            calculator.process(
-                sampleAt(2000L, latitude = 0.00001, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f),
-                settings,
-            )
-        // The return segment C should NOT add distance (bounce detected).
-        // But A→B was already processed. Since GPS speed is reliable and shows
-        // movement, the auto-pause check would have allowed it.
-        // The key assertion: C's return segment is zeroed out.
-        // We verify the calculator didn't crash and produced sensible output.
-        assertThat(metrics.gpsQuality).isNotNull()
+    fun `bounce detection reverses the outbound jump distance, not just the return leg`() {
+        // recentPositions only reaches its size-3 warm-up once 3 *accepted*
+        // location fixes have landed, and bounce detection reads
+        // recentPositions[0]/[1] as "oldest"/"middle" — so this sequence is
+        // built to land the jump exactly at index 1 when the return fix is
+        // evaluated: one steady fix (S1), the jump (S2), one more steady fix
+        // continuing from the jump's position (S3) to shift the ring buffer,
+        // then the return (S4).
+        calculator.process(sampleAt(0L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 11.0, accuracy = 5.0f), settings)
+        calculator.process(sampleAt(1000L, latitude = 0.00010, longitude = 0.0, speedFromGpsMps = 11.0, accuracy = 5.0f), settings)
+
+        // The jump: ~33m over 3s (a plausible post-dropout speed, ~11 m/s) so
+        // it doesn't independently trip the speed/accel/cross-validation
+        // outlier checks and gets accepted as a real fix.
+        val afterJump =
+            calculator
+                .process(sampleAt(4000L, latitude = 0.00040, longitude = 0.0, speedFromGpsMps = 11.13, accuracy = 5.0f), settings)
+                .distanceKm
+
+        // A further steady fix continuing from the jump's (wrong) position —
+        // needed only to shift the jump into recentPositions[1] for the
+        // return fix's bounce check.
+        calculator.process(sampleAt(5000L, latitude = 0.00050, longitude = 0.0, speedFromGpsMps = 11.13, accuracy = 5.0f), settings)
+
+        // The return: back within 5m of the position from before the jump.
+        val afterReturn =
+            calculator
+                .process(sampleAt(6000L, latitude = 0.00012, longitude = 0.0, speedFromGpsMps = 11.13, accuracy = 5.0f), settings)
+                .distanceKm
+
+        // If only the return leg were zeroed (the pre-fix behavior), distance
+        // could only stay flat or grow from here — it can never go back down.
+        // A real decrease proves the jump's ~33m was reversed once the bounce
+        // was confirmed.
+        assertThat(afterReturn).isLessThan(afterJump)
     }
 
     @Test
