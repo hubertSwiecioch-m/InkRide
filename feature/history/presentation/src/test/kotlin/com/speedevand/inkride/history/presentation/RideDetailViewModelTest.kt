@@ -6,6 +6,7 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import com.speedevand.inkride.core.domain.DataError
 import com.speedevand.inkride.core.domain.EmptyResult
 import com.speedevand.inkride.core.domain.Result
@@ -134,6 +135,34 @@ class RideDetailViewModelTest {
             assertThat(viewModel.state.value.trackPoints).isEqualTo(
                 listOf(TrackPointUi(52.1, 21.0), TrackPointUi(52.2, 21.1)),
             )
+        }
+
+    @Test
+    fun `track points with altitude populate the elevation chart`() =
+        runTest {
+            rideRepo.setRide(sampleRide)
+            trackPointRepo.points =
+                listOf(
+                    RideTrackPoint(timestampMs = 0L, latitude = 52.0, longitude = 21.0, altitudeM = 100.0),
+                    RideTrackPoint(timestampMs = 1000L, latitude = 52.01, longitude = 21.0, altitudeM = 150.0),
+                )
+            val viewModel = RideDetailViewModel(1L, rideRepo, lapRepo, trackPointRepo, settingsRepo, gpxExporter)
+
+            assertThat(viewModel.state.value.elevationChart).isNotNull()
+        }
+
+    @Test
+    fun `track points without altitude leave the elevation chart null`() =
+        runTest {
+            rideRepo.setRide(sampleRide)
+            trackPointRepo.points =
+                listOf(
+                    RideTrackPoint(timestampMs = 0L, latitude = 52.0, longitude = 21.0),
+                    RideTrackPoint(timestampMs = 1000L, latitude = 52.01, longitude = 21.0),
+                )
+            val viewModel = RideDetailViewModel(1L, rideRepo, lapRepo, trackPointRepo, settingsRepo, gpxExporter)
+
+            assertThat(viewModel.state.value.elevationChart).isNull()
         }
 
     class FakeRideHistoryRepository : RideHistoryRepository {
