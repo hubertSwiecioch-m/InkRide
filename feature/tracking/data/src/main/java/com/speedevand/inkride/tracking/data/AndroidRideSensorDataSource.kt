@@ -32,8 +32,7 @@ class AndroidRideSensorDataSource(
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val pressureSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
-    private val accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    private val magnetometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    private val rotationVectorSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
 
     // All sensor/location callbacks are delivered on the main looper, so start()
     // can be called from any thread (e.g. a background coroutine in the process-
@@ -69,11 +68,12 @@ class AndroidRideSensorDataSource(
     // north), refreshed from the current location. 0 until the first fix.
     private var magneticDeclinationDeg: Float = 0f
 
-    // True while the magnetometer reports UNRELIABLE/LOW calibration accuracy.
-    // While set, magnetometer-derived heading is suppressed (GPS course-over-
+    // True while the fused rotation vector reports UNRELIABLE/LOW accuracy
+    // (e.g. right after start, before gyro/mag fusion has converged). While
+    // set, rotation-vector-derived heading is suppressed (GPS course-over-
     // ground is still used when moving). Unknown accuracy is treated as usable
     // so devices that never fire onAccuracyChanged still get a compass.
-    private var isMagnetometerUnreliable: Boolean = false
+    private var isOrientationSensorUnreliable: Boolean = false
 
     // Above this speed, GPS course-over-ground is more trustworthy than the
     // magnetometer (which is easily disturbed by the bike frame and phone).
@@ -138,47 +138,37 @@ class AndroidRideSensorDataSource(
 
         val localOrientationListener =
             object : SensorEventListener {
-                private var gravity: FloatArray? = null
-                private var geomagnetic: FloatArray? = null
-
                 override fun onSensorChanged(event: SensorEvent?) {
-                    if (event == null) return
-                    if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) gravity = event.values.clone()
-                    if (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) geomagnetic = event.values.clone()
+                    if (event == null || event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
 
-                    // Suppress heading while the magnetometer is known to be miscalibrated.
-                    // A figure-eight calibration is needed; until then the azimuth is
-                    // garbage and would point the compass in a random direction.
-                    // (GPS course-over-ground, set in the location listener, is unaffected.)
-                    if (isMagnetometerUnreliable) return
+                    // Suppress heading while the fused rotation vector is known to be
+                    // unreliable. (GPS course-over-ground, set in the location
+                    // listener, is unaffected.)
+                    if (isOrientationSensorUnreliable) return
 
-                    if (gravity != null && geomagnetic != null) {
-                        val r = FloatArray(9)
-                        val i = FloatArray(9)
-                        if (SensorManager.getRotationMatrix(r, i, gravity, geomagnetic)) {
-                            val orientation = FloatArray(3)
-                            SensorManager.getOrientation(r, orientation)
-                            val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                    val r = FloatArray(9)
+                    SensorManager.getRotationMatrixFromVector(r, event.values)
+                    val orientation = FloatArray(3)
+                    SensorManager.getOrientation(r, orientation)
+                    val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
 
-                            val update = headingSmoother.update(azimuth, magneticDeclinationDeg)
-                            lastHeading = update.smoothedHeadingDeg
-                            lastHeadingTimestampMs = System.currentTimeMillis()
+                    val update = headingSmoother.update(azimuth, magneticDeclinationDeg)
+                    lastHeading = update.smoothedHeadingDeg
+                    lastHeadingTimestampMs = System.currentTimeMillis()
 
-                            // Throttle emissions to ~2° steps to avoid flooding the
-                            // sample flow (and the E-Ink redraw) with micro-changes.
-                            if (update.shouldEmit) emitSample()
-                        }
-                    }
+                    // Throttle emissions to ~2° steps to avoid flooding the
+                    // sample flow (and the E-Ink redraw) with micro-changes.
+                    if (update.shouldEmit) emitSample()
                 }
 
                 override fun onAccuracyChanged(
                     sensor: Sensor?,
                     accuracy: Int,
                 ) {
-                    // Track magnetometer calibration health. UNRELIABLE/LOW mean the
-                    // compass needs recalibration and its heading can't be trusted.
-                    if (sensor?.type == Sensor.TYPE_MAGNETIC_FIELD) {
-                        isMagnetometerUnreliable = accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE ||
+                    // Track rotation-vector fusion health. UNRELIABLE/LOW mean the
+                    // fused heading can't be trusted yet.
+                    if (sensor?.type == Sensor.TYPE_ROTATION_VECTOR) {
+                        isOrientationSensorUnreliable = accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE ||
                             accuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW
                     }
                 }
@@ -227,16 +217,7 @@ class AndroidRideSensorDataSource(
             )
         }
 
-        accelerometer?.also {
-            sensorManager.registerListener(
-                localOrientationListener,
-                it,
-                SensorManager.SENSOR_DELAY_NORMAL,
-                callbackHandler,
-            )
-        }
-
-        magnetometer?.also {
+        rotationVectorSensor?.also {
             sensorManager.registerListener(
                 localOrientationListener,
                 it,
@@ -363,7 +344,7 @@ class AndroidRideSensorDataSource(
         lastHeading = null
         headingSmoother.reset()
         magneticDeclinationDeg = 0f
-        isMagnetometerUnreliable = false
+        isOrientationSensorUnreliable = false
         lastSatelliteCount = null
         lastGpsTimestampMs = 0L
         lastPressureTimestampMs = 0L
