@@ -2,11 +2,16 @@ package com.speedevand.inkride.history.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.speedevand.inkride.core.domain.Result
 import com.speedevand.inkride.core.domain.history.RideHistoryRepository
+import com.speedevand.inkride.core.domain.history.RideLapRepository
 import com.speedevand.inkride.core.domain.history.RideRecord
+import com.speedevand.inkride.core.domain.history.RideTrackPoint
+import com.speedevand.inkride.core.domain.history.RideTrackPointRepository
 import com.speedevand.inkride.core.domain.onFailure
 import com.speedevand.inkride.core.domain.onSuccess
 import com.speedevand.inkride.core.domain.settings.UserSettingsRepository
+import com.speedevand.inkride.core.domain.tracking.LapRecord
 import com.speedevand.inkride.core.presentation.toUiText
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +24,8 @@ import kotlinx.coroutines.launch
 class RideHistoryViewModel(
     private val rideHistoryRepository: RideHistoryRepository,
     private val userSettingsRepository: UserSettingsRepository,
+    private val trackPointRepository: RideTrackPointRepository,
+    private val lapRepository: RideLapRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(RideHistoryState())
     val state = _state.asStateFlow()
@@ -26,7 +33,13 @@ class RideHistoryViewModel(
     private val _events = Channel<RideHistoryEvent>()
     val events = _events.receiveAsFlow()
 
-    private var recentlyDeletedRide: RideRecord? = null
+    private data class DeletedRideBundle(
+        val ride: RideRecord,
+        val trackPoints: List<RideTrackPoint>,
+        val laps: List<LapRecord>,
+    )
+
+    private var recentlyDeletedRide: DeletedRideBundle? = null
 
     init {
         viewModelScope.launch {
@@ -56,7 +69,17 @@ class RideHistoryViewModel(
                     rideHistoryRepository
                         .getById(action.id)
                         .onSuccess { ride ->
-                            recentlyDeletedRide = ride
+                            val points =
+                                when (val result = trackPointRepository.getPoints(action.id)) {
+                                    is Result.Success -> result.data
+                                    is Result.Error -> emptyList()
+                                }
+                            val laps =
+                                when (val result = lapRepository.getLaps(action.id)) {
+                                    is Result.Success -> result.data
+                                    is Result.Error -> emptyList()
+                                }
+                            recentlyDeletedRide = DeletedRideBundle(ride, points, laps)
                             rideHistoryRepository
                                 .deleteById(action.id)
                                 .onSuccess {
@@ -72,10 +95,19 @@ class RideHistoryViewModel(
 
             RideHistoryAction.OnUndoDelete -> {
                 viewModelScope.launch {
-                    recentlyDeletedRide?.let { ride ->
-                        rideHistoryRepository.save(ride).onFailure { error ->
-                            _events.send(RideHistoryEvent.ShowError(error.toUiText()))
-                        }
+                    recentlyDeletedRide?.let { bundle ->
+                        rideHistoryRepository
+                            .save(bundle.ride)
+                            .onSuccess { newId ->
+                                if (bundle.trackPoints.isNotEmpty()) {
+                                    trackPointRepository.savePoints(newId, bundle.trackPoints)
+                                }
+                                if (bundle.laps.isNotEmpty()) {
+                                    lapRepository.saveLaps(newId, bundle.laps)
+                                }
+                            }.onFailure { error ->
+                                _events.send(RideHistoryEvent.ShowError(error.toUiText()))
+                            }
                         recentlyDeletedRide = null
                     }
                 }
