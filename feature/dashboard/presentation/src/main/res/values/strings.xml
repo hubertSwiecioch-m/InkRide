@@ -35,6 +35,7 @@
     <!-- Info bar -->
     <string name="dashboard_gps_accuracy">GPS accuracy: %1$s %2$s</string>
     <string name="dashboard_heart_rate">%1$s bpm</string>
+    <string name="dashboard_heart_rate_zone">%1$s bpm (Z%2$d)</string>
     <string name="dashboard_cadence">%1$s rpm</string>
     <string name="dashboard_sensor_disconnected">Sensor disconnected</string>
     <string name="dashboard_weather">Baro %1$s</string>

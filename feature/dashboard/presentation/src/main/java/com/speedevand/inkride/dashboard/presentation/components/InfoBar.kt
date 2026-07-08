@@ -35,9 +35,13 @@ fun InfoBar(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.outline,
         )
-        metrics.heartRateBpm?.let {
+        metrics.heartRateBpm?.let { bpm ->
+            val heartRateText =
+                metrics.heartRateZone?.let { zone ->
+                    stringResource(R.string.dashboard_heart_rate_zone, bpm, zone)
+                } ?: stringResource(R.string.dashboard_heart_rate, bpm)
             TextMMD(
-                text = stringResource(R.string.dashboard_heart_rate, it),
+                text = heartRateText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
