@@ -323,6 +323,9 @@ class RideHistoryViewModelTest {
                 val errorEvent = awaitItem()
                 assertThat(errorEvent).isInstanceOf<RideHistoryEvent.ShowError>()
             }
+
+            // Verify ride was still restored despite savePoints failure
+            assertThat(rideRepo.rides.size).isEqualTo(1)
         }
 
     @Test
@@ -362,6 +365,9 @@ class RideHistoryViewModelTest {
                 val errorEvent = awaitItem()
                 assertThat(errorEvent).isInstanceOf<RideHistoryEvent.ShowError>()
             }
+
+            // Verify ride was still restored despite saveLaps failure
+            assertThat(rideRepo.rides.size).isEqualTo(1)
         }
 
     class FakeRideHistoryRepository : RideHistoryRepository {
