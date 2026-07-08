@@ -1,11 +1,7 @@
 package com.speedevand.inkride.core.domain.tracking
 
 import kotlin.math.PI
-import kotlin.math.asin
 import kotlin.math.cos
-import kotlin.math.min
-import kotlin.math.pow
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
@@ -52,14 +48,14 @@ class RouteFollower(
             return RouteProgress(distanceToRouteM = 0.0, isOffRoute = false)
         }
         if (pts.size == 1) {
-            val d = haversine(latitude, longitude, pts[0].latitude, pts[0].longitude)
+            val d = haversineMeters(latitude, longitude, pts[0].latitude, pts[0].longitude)
             val next = route.waypoints.firstOrNull()
             return RouteProgress(
                 distanceToRouteM = d,
                 isOffRoute = d > offRouteThresholdM,
                 distanceToNextWaypointM =
                     next
-                        ?.let { haversine(latitude, longitude, it.latitude, it.longitude) },
+                        ?.let { haversineMeters(latitude, longitude, it.latitude, it.longitude) },
                 nextWaypointName = next?.name,
             )
         }
@@ -121,7 +117,7 @@ class RouteFollower(
         val cum = DoubleArray(pts.size)
         for (i in 1 until pts.size) {
             cum[i] = cum[i - 1] +
-                haversine(
+                haversineMeters(
                     pts[i - 1].latitude,
                     pts[i - 1].longitude,
                     pts[i].latitude,
@@ -185,20 +181,6 @@ class RouteFollower(
         val cx = ax + t * abx
         val cy = ay + t * aby
         return Projection(distanceM = sqrt(cx * cx + cy * cy), t = t)
-    }
-
-    private fun haversine(
-        lat1: Double,
-        lon1: Double,
-        lat2: Double,
-        lon2: Double,
-    ): Double {
-        val dLat = (lat2 - lat1).toRadians()
-        val dLon = (lon2 - lon1).toRadians()
-        val a =
-            sin(dLat / 2).pow(2) +
-                cos(lat1.toRadians()) * cos(lat2.toRadians()) * sin(dLon / 2).pow(2)
-        return EARTH_RADIUS_M * 2 * asin(min(1.0, sqrt(a)))
     }
 
     private fun Double.toRadians(): Double = this * PI / 180.0
