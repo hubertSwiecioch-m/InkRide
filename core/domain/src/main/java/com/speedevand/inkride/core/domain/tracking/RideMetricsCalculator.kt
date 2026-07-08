@@ -2,15 +2,8 @@ package com.speedevand.inkride.core.domain.tracking
 
 import com.speedevand.inkride.core.domain.settings.UserSettings
 import kotlin.collections.ArrayDeque
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.asin
-import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 class RideMetricsCalculator(
     private val caloriesEstimator: CaloriesEstimator = CaloriesEstimator(),
@@ -199,7 +192,7 @@ class RideMetricsCalculator(
             val (segmentDistanceM, locationDtMs) =
                 if (lastLocationSample != null) {
                     val dist =
-                        haversineDistanceMeters(
+                        haversineMeters(
                             lastLocationSample!!.latitude!!,
                             lastLocationSample!!.longitude!!,
                             sample.latitude,
@@ -233,8 +226,8 @@ class RideMetricsCalculator(
                 if (recentPositions.size >= 3) {
                     val oldest = recentPositions.first()
                     val middle = recentPositions[1]
-                    val jumpDist = haversineDistanceMeters(oldest.first, oldest.second, middle.first, middle.second)
-                    val returnDist = haversineDistanceMeters(oldest.first, oldest.second, sample.latitude, sample.longitude)
+                    val jumpDist = haversineMeters(oldest.first, oldest.second, middle.first, middle.second)
+                    val returnDist = haversineMeters(oldest.first, oldest.second, sample.latitude, sample.longitude)
                     jumpDist > bounceJumpRadiusM && returnDist < bounceReturnRadiusM
                 } else {
                     false
@@ -566,25 +559,4 @@ class RideMetricsCalculator(
             else -> GpsQuality.POOR
         }
     }
-
-    private fun haversineDistanceMeters(
-        lat1: Double,
-        lon1: Double,
-        lat2: Double,
-        lon2: Double,
-    ): Double {
-        val earthRadiusM = 6_371_000.0
-        val dLat = (lat2 - lat1).toRadians()
-        val dLon = (lon2 - lon1).toRadians()
-
-        val a =
-            sin(dLat / 2).pow(2) +
-                cos(lat1.toRadians()) * cos(lat2.toRadians()) *
-                sin(dLon / 2).pow(2)
-
-        val c = 2 * asin(min(1.0, sqrt(a)))
-        return earthRadiusM * c
-    }
-
-    private fun Double.toRadians(): Double = this * PI / 180.0
 }
