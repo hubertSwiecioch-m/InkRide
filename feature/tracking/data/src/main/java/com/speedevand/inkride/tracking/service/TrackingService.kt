@@ -110,10 +110,11 @@ class TrackingService : Service() {
      * Distinct vibration patterns per alert so the rider can tell them apart
      * without looking: a single long buzz for over-speed, two short for HR-high,
      * one short for HR-low, three short for off-route.
+     *
+     * VIBRATE is a normal permission declared in app/src/main/AndroidManifest.xml.
+     * Lint running at this library module's level can't see the merged app
+     * manifest, so it flags a false positive here.
      */
-    // VIBRATE is a normal permission declared in app/src/main/AndroidManifest.xml.
-    // Lint running at this library module's level can't see the merged app
-    // manifest, so it flags a false positive here.
     @Suppress("MissingPermission")
     private fun vibrateFor(alert: RideAlert) {
         val pattern =
