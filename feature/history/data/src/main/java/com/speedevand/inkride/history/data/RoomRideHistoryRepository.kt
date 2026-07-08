@@ -1,6 +1,7 @@
 package com.speedevand.inkride.history.data
 
 import android.database.sqlite.SQLiteFullException
+import android.util.Log
 import com.speedevand.inkride.core.database.RideHistoryDao
 import com.speedevand.inkride.core.database.RideHistoryEntity
 import com.speedevand.inkride.core.domain.DataError
@@ -11,6 +12,8 @@ import com.speedevand.inkride.core.domain.history.RideRecord
 import com.speedevand.inkride.core.domain.settings.BikeType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+
+private const val TAG = "RoomRideHistoryRepository"
 
 class RoomRideHistoryRepository(
     private val dao: RideHistoryDao,
@@ -33,8 +36,10 @@ class RoomRideHistoryRepository(
         try {
             Result.Success(dao.insert(ride.toEntity()))
         } catch (e: SQLiteFullException) {
+            Log.e(TAG, "save failed: disk full", e)
             Result.Error(DataError.Local.DISK_FULL)
         } catch (e: Exception) {
+            Log.e(TAG, "save failed", e)
             Result.Error(DataError.Local.UNKNOWN)
         }
 
@@ -43,6 +48,7 @@ class RoomRideHistoryRepository(
             dao.deleteById(id)
             Result.Success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "deleteById failed for id=$id", e)
             Result.Error(DataError.Local.UNKNOWN)
         }
 
@@ -51,6 +57,7 @@ class RoomRideHistoryRepository(
             dao.deleteAll()
             Result.Success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "deleteAll failed", e)
             Result.Error(DataError.Local.UNKNOWN)
         }
 }

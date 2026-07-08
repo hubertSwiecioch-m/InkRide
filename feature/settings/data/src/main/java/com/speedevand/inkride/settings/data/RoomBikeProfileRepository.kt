@@ -1,6 +1,7 @@
 package com.speedevand.inkride.settings.data
 
 import android.database.sqlite.SQLiteFullException
+import android.util.Log
 import com.speedevand.inkride.core.database.BikeProfileDao
 import com.speedevand.inkride.core.database.BikeProfileEntity
 import com.speedevand.inkride.core.domain.DataError
@@ -12,6 +13,8 @@ import com.speedevand.inkride.core.domain.settings.BikeType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+private const val TAG = "RoomBikeProfileRepository"
+
 class RoomBikeProfileRepository(
     private val dao: BikeProfileDao,
 ) : BikeProfileRepository {
@@ -21,8 +24,10 @@ class RoomBikeProfileRepository(
         try {
             Result.Success(dao.upsert(profile.toEntity()))
         } catch (e: SQLiteFullException) {
+            Log.e(TAG, "upsert failed: disk full", e)
             Result.Error(DataError.Local.DISK_FULL)
         } catch (e: Exception) {
+            Log.e(TAG, "upsert failed", e)
             Result.Error(DataError.Local.UNKNOWN)
         }
 
@@ -31,6 +36,7 @@ class RoomBikeProfileRepository(
             dao.deleteById(id)
             Result.Success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "delete failed for id=$id", e)
             Result.Error(DataError.Local.UNKNOWN)
         }
 }

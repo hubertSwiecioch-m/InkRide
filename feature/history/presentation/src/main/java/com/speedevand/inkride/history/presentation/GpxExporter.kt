@@ -2,6 +2,7 @@ package com.speedevand.inkride.history.presentation
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.core.content.FileProvider
 import com.speedevand.inkride.core.domain.Error
 import com.speedevand.inkride.core.domain.Result
@@ -68,6 +69,7 @@ class AndroidGpxExporter(
                 val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
                 Result.Success(uri)
             } catch (e: Exception) {
+                Log.e(TAG, "GPX export failed for rideId=$rideId", e)
                 Result.Error(GpxExportError.FAILED)
             }
         }
@@ -75,6 +77,7 @@ class AndroidGpxExporter(
     private fun fileTimestamp(ms: Long): String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(ms))
 
     private companion object {
+        const val TAG = "AndroidGpxExporter"
         const val GPX_DIR = "gpx"
     }
 }
