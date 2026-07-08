@@ -70,6 +70,7 @@ class RideTracker(
     private val bleSensorDataSource: BleSensorDataSource,
     private val userSettingsRepository: UserSettingsRepository,
     private val routeFollower: RouteFollower = RouteFollower(),
+    private val heartRateFilter: HeartRateFilter = HeartRateFilter(),
     private val minSaveDistanceKm: Double = 0.01,
     // Smallest segment (km) that closes into an automatic final lap at stop.
     private val minLapDistanceKm: Double = 0.01,
@@ -245,6 +246,7 @@ class RideTracker(
         metricsCalculator.reset()
         lowSpeedSinceMs = null
         lastCadenceUpdateAtMs = null
+        heartRateFilter.reset()
         resetAlertState()
         resetLapBaseline()
         _state.value = TrackingState()
@@ -262,6 +264,7 @@ class RideTracker(
                 metricsCalculator.reset()
                 lowSpeedSinceMs = null
                 lastCadenceUpdateAtMs = null
+                heartRateFilter.reset()
                 resetAlertState()
                 resetLapBaseline()
                 synchronized(trackPointsLock) { trackPoints.clear() }
@@ -358,7 +361,7 @@ class RideTracker(
                                         current.copy(
                                             metrics =
                                                 current.metrics.copy(
-                                                    heartRateBpm = ble.heartRateBpm,
+                                                    heartRateBpm = heartRateFilter.filter(ble.heartRateBpm, ble.timestampMs),
                                                     cadenceRpm = cadenceOrZeroIfStale(ble.cadenceRpm, ble.timestampMs),
                                                 ),
                                             bleSensorConnected = ble.connected,

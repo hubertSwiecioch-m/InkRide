@@ -357,6 +357,20 @@ class RideTrackerTest {
             assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(90)
         }
 
+    @Test
+    fun `an implausible heart-rate spike is rejected and the last good value is kept`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(BleSample(timestampMs = 0L, heartRateBpm = 145, connected = true))
+            ble.samples.emit(BleSample(timestampMs = 1_000L, heartRateBpm = 255, connected = true))
+
+            assertThat(tracker.state.value.metrics.heartRateBpm).isEqualTo(145)
+        }
+
     private fun newTracker(
         scheduler: TestCoroutineScheduler,
         sensor: FakeSensorDataSource,
