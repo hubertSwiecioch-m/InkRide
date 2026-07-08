@@ -16,6 +16,8 @@ import com.speedevand.inkride.dashboard.presentation.model.RideMetricsUi
 @Composable
 fun InfoBar(
     metrics: RideMetricsUi,
+    sensorPaired: Boolean,
+    sensorConnected: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -43,6 +45,13 @@ fun InfoBar(
         metrics.cadenceRpm?.let {
             TextMMD(
                 text = stringResource(R.string.dashboard_cadence, it),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+        }
+        if (sensorPaired && !sensorConnected) {
+            TextMMD(
+                text = stringResource(R.string.dashboard_sensor_disconnected),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )

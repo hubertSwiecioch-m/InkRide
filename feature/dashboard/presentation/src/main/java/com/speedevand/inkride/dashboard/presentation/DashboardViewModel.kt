@@ -83,6 +83,7 @@ class DashboardViewModel(
                         tracking.activeRoute?.let {
                             routeProgressUi(it, tracking.routeProgress, settings.units)
                         },
+                    bleSensorConnected = tracking.bleSensorConnected,
                 )
             }.collect { newState -> _state.value = newState }
         }
