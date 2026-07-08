@@ -402,6 +402,7 @@ class RideMetricsCalculator(
                         accelerationMps2 = smoothedAccelMps2,
                         gradePercent = currentGrade,
                         userSettings = userSettings,
+                        altitudeM = smoothedAltitudeM,
                     )
                 if (isActuallyMoving) {
                     powerWeightedSumWattMs += currentPowerWatts.toDouble() * integrationDtMs
