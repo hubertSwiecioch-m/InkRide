@@ -266,11 +266,23 @@ fun RideDetailScreen(
 
                 RideDetailSection(
                     title = stringResource(R.string.ride_detail_section_additional),
-                    showDivider = state.trackPoints.isNotEmpty() || state.laps.isNotEmpty(),
+                    showDivider = state.elevationChart != null || state.trackPoints.isNotEmpty() || state.laps.isNotEmpty(),
                 ) {
                     DetailRow(label = stringResource(R.string.ride_detail_elevation_gain), value = ride.elevationGainM)
                     DetailRow(label = stringResource(R.string.ride_detail_calories), value = ride.caloriesKcal)
                     DetailRow(label = stringResource(R.string.ride_detail_avg_power), value = ride.averagePowerWatts)
+                }
+
+                if (state.elevationChart != null) {
+                    RideDetailSection(
+                        title = stringResource(R.string.ride_detail_section_elevation_chart),
+                        showDivider = state.trackPoints.isNotEmpty() || state.laps.isNotEmpty(),
+                    ) {
+                        ElevationChart(
+                            chart = state.elevationChart,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
 
                 if (state.trackPoints.isNotEmpty()) {
