@@ -274,6 +274,27 @@ class RideTrackerTest {
         }
 
     @Test
+    fun `HR set by a BLE sample survives a subsequent GPS-only metrics update`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(BleSample(timestampMs = 0L, heartRateBpm = 142, cadenceRpm = 88, connected = true))
+            assertThat(tracker.state.value.metrics.heartRateBpm).isEqualTo(142)
+
+            // A GPS fix must not clobber the HR/cadence the BLE collector just
+            // committed to state — it should read the live value at commit
+            // time inside the same atomic update, not a snapshot taken
+            // before it.
+            sensor.samples.emit(sampleAt(0L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f))
+
+            assertThat(tracker.state.value.metrics.heartRateBpm).isEqualTo(142)
+            assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(88)
+        }
+
+    @Test
     fun `over-speed alert fires once when speed crosses the threshold`() =
         runTest {
             val sensor = FakeSensorDataSource()

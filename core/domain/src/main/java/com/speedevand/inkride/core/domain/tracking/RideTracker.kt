@@ -130,12 +130,6 @@ class RideTracker(
     private var lapBaselineMovingTimeSeconds: Long = 0L
     private var lapBaselineElevationGainM: Double = 0.0
 
-    // Latest BLE sensor reading, folded into every emitted RideMetrics. Written by
-    // the BLE collector coroutine, read by the GPS collector — @Volatile for
-    // cross-thread visibility.
-    @Volatile
-    private var latestBle: BleSample? = null
-
     // Latest user settings, kept current by the collection loop so metric
     // calculation always uses up-to-date weight/bike/age values.
     @Volatile
@@ -240,7 +234,6 @@ class RideTracker(
         bleSensorDataSource.disconnect()
         metricsCalculator.reset()
         lowSpeedSinceMs = null
-        latestBle = null
         resetAlertState()
         resetLapBaseline()
         _state.value = TrackingState()
@@ -257,7 +250,6 @@ class RideTracker(
                 sessionStartMs = System.currentTimeMillis()
                 metricsCalculator.reset()
                 lowSpeedSinceMs = null
-                latestBle = null
                 resetAlertState()
                 resetLapBaseline()
                 synchronized(trackPointsLock) { trackPoints.clear() }
@@ -345,7 +337,6 @@ class RideTracker(
                 val bleJob =
                     launch {
                         bleSensorDataSource.observeSamples().collect { ble ->
-                            latestBle = ble
                             val updated =
                                 _state.updateAndGet { current ->
                                     if (current.status == TrackingStatus.IDLE) {
@@ -379,16 +370,7 @@ class RideTracker(
                                 userSettings = latestSettings,
                                 isPaused = isPaused,
                             )
-                        // Fold the latest BLE reading into the published metrics; the
-                        // calculator stays GPS-only.
-                        val ble = latestBle
-                        val metrics =
-                            if (ble != null) {
-                                baseMetrics.copy(heartRateBpm = ble.heartRateBpm, cadenceRpm = ble.cadenceRpm)
-                            } else {
-                                baseMetrics
-                            }
-                        val autoStatus = evaluateAutoPause(statusBefore, metrics.currentSpeedKmh, sample.timestampMs)
+                        val autoStatus = evaluateAutoPause(statusBefore, baseMetrics.currentSpeedKmh, sample.timestampMs)
                         // Recompute route-follow progress from this fix; carry the
                         // previous value forward on a fix-less sample so the readout
                         // doesn't flicker between GPS updates.
@@ -402,9 +384,19 @@ class RideTracker(
                             _state.updateAndGet { current ->
                                 if (current.status == TrackingStatus.IDLE) return@updateAndGet current
                                 val resolved = if (current.status == statusBefore) autoStatus else current.status
+                                // Merge HR/cadence from whatever the BLE collector has
+                                // most recently committed to `current` inside this same
+                                // atomic update, rather than a snapshot read earlier —
+                                // otherwise a concurrent BLE commit landing in between
+                                // would be clobbered by a stale value here.
+                                val metrics =
+                                    baseMetrics.copy(
+                                        heartRateBpm = current.metrics.heartRateBpm,
+                                        cadenceRpm = current.metrics.cadenceRpm,
+                                    )
                                 current.copy(status = resolved, metrics = metrics, routeProgress = progress)
                             }
-                        recordTrackPoint(newState.status, sample, metrics)
+                        recordTrackPoint(newState.status, sample, newState.metrics)
                         evaluateAlerts(newState.status, newState.metrics)
                         evaluateOffRoute(newState.status, newState.routeProgress)
                     }
