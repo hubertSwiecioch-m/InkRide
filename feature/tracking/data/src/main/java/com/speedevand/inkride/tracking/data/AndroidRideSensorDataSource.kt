@@ -67,6 +67,17 @@ class AndroidRideSensorDataSource(
 
     private val positionKalmanFilter = PositionKalmanFilter()
 
+    // Timestamp (the GPS fix's own device clock, i.e. Location.time) of the
+    // last fix actually fed into positionKalmanFilter, and the filter's last
+    // output. emitSample() fires far more often than GPS produces new fixes
+    // (barometer ~2Hz, heading on every ~2° step), and useGpsData stays true
+    // for up to maxGpsFixAgeMs after a fix — without this guard the filter
+    // would run a full predict+update cycle multiple times per second against
+    // an unchanged position, dragging its velocity estimate toward zero and
+    // over-shrinking its covariance between real fixes.
+    private var lastKalmanFedLocationTimeMs: Long = 0L
+    private var lastKalmanResult: com.speedevand.inkride.core.domain.tracking.FilteredPosition? = null
+
     // Magnetic declination (degrees to add to a magnetic heading to get true
     // north), refreshed from the current location. 0 until the first fix.
     private var magneticDeclinationDeg: Float = 0f
@@ -79,7 +90,8 @@ class AndroidRideSensorDataSource(
     private var isOrientationSensorUnreliable: Boolean = false
 
     // Above this speed, GPS course-over-ground is more trustworthy than the
-    // magnetometer (which is easily disturbed by the bike frame and phone).
+    // rotation-vector heading (which is easily disturbed by the bike frame
+    // and phone, and the underlying magnetometer fusion in particular).
     private val gpsBearingMinSpeedMps: Float = 2.0f
 
     // Satellite count from GnssStatus — used for GPS quality assessment.
@@ -298,12 +310,19 @@ class AndroidRideSensorDataSource(
         // distance cross-validation still compares two independent signals.
         val filteredPosition =
             if (useGpsData) {
-                positionKalmanFilter.update(
-                    latitude = location!!.latitude,
-                    longitude = location.longitude,
-                    accuracyM = location.accuracy,
-                    timestampMs = sampleTimestampMs,
-                )
+                val fixTimeMs = location!!.time
+                if (fixTimeMs != lastKalmanFedLocationTimeMs) {
+                    lastKalmanFedLocationTimeMs = fixTimeMs
+                    positionKalmanFilter
+                        .update(
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            accuracyM = location.accuracy,
+                            timestampMs = fixTimeMs,
+                        ).also { lastKalmanResult = it }
+                } else {
+                    lastKalmanResult
+                }
             } else {
                 null
             }
@@ -365,6 +384,8 @@ class AndroidRideSensorDataSource(
         lastHeading = null
         headingSmoother.reset()
         positionKalmanFilter.reset()
+        lastKalmanFedLocationTimeMs = 0L
+        lastKalmanResult = null
         magneticDeclinationDeg = 0f
         isOrientationSensorUnreliable = false
         lastSatelliteCount = null
