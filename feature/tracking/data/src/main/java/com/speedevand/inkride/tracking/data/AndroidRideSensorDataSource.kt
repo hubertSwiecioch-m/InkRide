@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import com.speedevand.inkride.core.domain.EmptyResult
 import com.speedevand.inkride.core.domain.Result
 import com.speedevand.inkride.core.domain.tracking.HeadingSmoother
+import com.speedevand.inkride.core.domain.tracking.PositionKalmanFilter
 import com.speedevand.inkride.core.domain.tracking.RideSensorDataSource
 import com.speedevand.inkride.core.domain.tracking.RideSensorSample
 import com.speedevand.inkride.core.domain.tracking.SensorError
@@ -63,6 +64,8 @@ class AndroidRideSensorDataSource(
     private var lastHeading: Float? = null
 
     private val headingSmoother = HeadingSmoother()
+
+    private val positionKalmanFilter = PositionKalmanFilter()
 
     // Magnetic declination (degrees to add to a magnetic heading to get true
     // north), refreshed from the current location. 0 until the first fix.
@@ -287,6 +290,24 @@ class AndroidRideSensorDataSource(
                 now, // fallback
             )
 
+        // Smooth the raw fix through the Kalman filter before it becomes this
+        // sample's position — RideMetricsCalculator's distance/speed/outlier
+        // logic then operates on the filtered position exactly as it did on
+        // the raw one. speedFromGpsMps (the chipset's own Doppler estimate)
+        // is left untouched, so RideMetricsCalculator's existing GPS-vs-
+        // distance cross-validation still compares two independent signals.
+        val filteredPosition =
+            if (useGpsData) {
+                positionKalmanFilter.update(
+                    latitude = location!!.latitude,
+                    longitude = location.longitude,
+                    accuracyM = location.accuracy,
+                    timestampMs = sampleTimestampMs,
+                )
+            } else {
+                null
+            }
+
         // Bearing source: while moving, GPS course-over-ground is far more
         // reliable than the magnetometer (which is distorted by the bike frame
         // and the phone's own fields). When slow or stopped, fall back to the
@@ -309,8 +330,8 @@ class AndroidRideSensorDataSource(
         samplesFlow.tryEmit(
             RideSensorSample(
                 timestampMs = sampleTimestampMs,
-                latitude = if (useGpsData) location.latitude else null,
-                longitude = if (useGpsData) location.longitude else null,
+                latitude = filteredPosition?.latitude,
+                longitude = filteredPosition?.longitude,
                 altitudeFromGpsM = if (useGpsData) location.let { if (it.hasAltitude()) it.altitude else null } else null,
                 altitudeFromBarometerM = altitudeFromBarometer,
                 speedFromGpsMps = if (useGpsData) location.let { if (it.hasSpeed()) it.speed.toDouble() else null } else null,
@@ -343,6 +364,7 @@ class AndroidRideSensorDataSource(
         lastPressureHpa = null
         lastHeading = null
         headingSmoother.reset()
+        positionKalmanFilter.reset()
         magneticDeclinationDeg = 0f
         isOrientationSensorUnreliable = false
         lastSatelliteCount = null
