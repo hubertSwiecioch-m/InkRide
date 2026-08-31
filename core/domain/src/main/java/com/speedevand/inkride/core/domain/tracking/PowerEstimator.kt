@@ -4,6 +4,7 @@ import com.speedevand.inkride.core.domain.settings.BikeType
 import com.speedevand.inkride.core.domain.settings.UserSettings
 import kotlin.math.atan
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
 
 class PowerEstimator {
@@ -41,12 +42,13 @@ class PowerEstimator {
         accelerationMps2: Double,
         gradePercent: Double,
         userSettings: UserSettings,
+        altitudeM: Double? = null,
     ): Int {
         if (speedMps <= 0.1) return 0
 
         val totalMassKg = userSettings.weightKg + userSettings.bikeWeightKg
         val gravity = 9.81
-        val airDensity = 1.225 // kg/m³ at sea level, 15°C
+        val airDensity = airDensityAt(altitudeM)
 
         val slopeAngleRad = atan(gradePercent / 100.0)
 
@@ -103,6 +105,17 @@ class PowerEstimator {
         // Drivetrain efficiency ~95% — multiply by 1/0.95 ≈ 1.05 to get power at crank.
         // Keeping it simple for now; this is within the noise of CdA uncertainty.
         return (totalPower * 1.05).coerceAtLeast(0.0).toInt()
+    }
+
+    /**
+     * Air density (kg/m³) at [altitudeM] using the ISA approximation, falling
+     * back to sea-level density when altitude is unknown (e.g. the first few
+     * samples of a ride, before barometer/GPS altitude has been established).
+     */
+    private fun airDensityAt(altitudeM: Double?): Double {
+        val seaLevelDensityKgM3 = 1.225
+        if (altitudeM == null) return seaLevelDensityKgM3
+        return seaLevelDensityKgM3 * (1.0 - 2.25577e-5 * altitudeM).coerceAtLeast(0.0).pow(5.25588)
     }
 
     companion object {

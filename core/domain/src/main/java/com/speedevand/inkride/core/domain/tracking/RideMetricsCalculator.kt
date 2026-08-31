@@ -2,15 +2,8 @@ package com.speedevand.inkride.core.domain.tracking
 
 import com.speedevand.inkride.core.domain.settings.UserSettings
 import kotlin.collections.ArrayDeque
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.asin
-import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 class RideMetricsCalculator(
     private val caloriesEstimator: CaloriesEstimator = CaloriesEstimator(),
@@ -93,10 +86,12 @@ class RideMetricsCalculator(
     private val gradePoints = ArrayDeque<Pair<Double, Double>>()
     private var currentGrade: Double = 0.0
 
-    // Bounce detection: track the last 3 position-bearing samples (lat, lng).
-    // When GPS jumps away and immediately returns, the middle sample is an
-    // artifact that should be rejected.
-    private val recentPositions = ArrayDeque<Pair<Double, Double>>(3)
+    // Bounce detection: track the last 3 position-bearing samples along with
+    // the distance each contributed to totalDistanceM. When GPS jumps away
+    // and immediately returns, the middle sample is an artifact — and its
+    // distance (already added to totalDistanceM on a prior call) must be
+    // reversed, not just the return leg's.
+    private val recentPositions = ArrayDeque<Triple<Double, Double, Double>>(3)
 
     // Stationary-drift protection: counts consecutive samples where the rider
     // appears stationary. After 5+ stationary samples, require 2 consecutive
@@ -188,6 +183,13 @@ class RideMetricsCalculator(
         var speedMps = lastReportedSpeedMps
         var isActuallyMoving = false
 
+        // Distance this fix actually contributed to totalDistanceM (0 if
+        // rejected as an outlier, paused, or otherwise suppressed). Recorded
+        // alongside the position in recentPositions so a later-confirmed
+        // bounce can reverse exactly what this fix added — see the isBounce
+        // handling below.
+        var appliedDistanceM = 0.0
+
         // Set when a location fix is rejected as a positional outlier. Such a fix
         // must not be adopted as the positional reference for the next segment,
         // nor enter the bounce-detection window (see end of method).
@@ -199,7 +201,7 @@ class RideMetricsCalculator(
             val (segmentDistanceM, locationDtMs) =
                 if (lastLocationSample != null) {
                     val dist =
-                        haversineDistanceMeters(
+                        haversineMeters(
                             lastLocationSample!!.latitude!!,
                             lastLocationSample!!.longitude!!,
                             sample.latitude,
@@ -233,8 +235,8 @@ class RideMetricsCalculator(
                 if (recentPositions.size >= 3) {
                     val oldest = recentPositions.first()
                     val middle = recentPositions[1]
-                    val jumpDist = haversineDistanceMeters(oldest.first, oldest.second, middle.first, middle.second)
-                    val returnDist = haversineDistanceMeters(oldest.first, oldest.second, sample.latitude, sample.longitude)
+                    val jumpDist = haversineMeters(oldest.first, oldest.second, middle.first, middle.second)
+                    val returnDist = haversineMeters(oldest.first, oldest.second, sample.latitude, sample.longitude)
                     jumpDist > bounceJumpRadiusM && returnDist < bounceReturnRadiusM
                 } else {
                     false
@@ -394,7 +396,20 @@ class RideMetricsCalculator(
                 if (isActuallyMoving && !isMovementConfirmationPending) {
                     movingTimeMs += locationDtMs
                 }
+                appliedDistanceM = effectiveDistanceM
                 totalDistanceM += effectiveDistanceM
+                // A confirmed bounce means the jump leg (recorded at
+                // recentPositions[1]) was itself a GPS artifact that already
+                // added its distance on a prior call — reverse it now so a
+                // jump-then-bounce pattern doesn't permanently inflate total
+                // distance. Zeroing the stored distance after reversing
+                // guards against double-subtracting it if a later fix also
+                // reads as a bounce against the same stale reference pair.
+                if (isBounce && recentPositions.size >= 3) {
+                    val middle = recentPositions[1]
+                    totalDistanceM = (totalDistanceM - middle.third).coerceAtLeast(0.0)
+                    recentPositions[1] = middle.copy(third = 0.0)
+                }
                 maxSpeedMps = max(maxSpeedMps, speedMps)
                 caloriesKcal +=
                     caloriesEstimator.estimateKcal(
@@ -420,6 +435,7 @@ class RideMetricsCalculator(
                         accelerationMps2 = smoothedAccelMps2,
                         gradePercent = currentGrade,
                         userSettings = userSettings,
+                        altitudeM = smoothedAltitudeM,
                     )
                 if (isActuallyMoving) {
                     powerWeightedSumWattMs += currentPowerWatts.toDouble() * energyDtMs
@@ -511,8 +527,9 @@ class RideMetricsCalculator(
         // fix is correctly measured across the (capped) gap instead.
         if (sample.latitude != null && sample.longitude != null && !locationOutlierRejected) {
             lastLocationSample = sample
-            // Maintain a ring buffer of the last 3 GPS positions for bounce detection.
-            recentPositions.addLast(sample.latitude to sample.longitude)
+            // Maintain a ring buffer of the last 3 GPS positions (plus the
+            // distance each contributed) for bounce detection.
+            recentPositions.addLast(Triple(sample.latitude, sample.longitude, appliedDistanceM))
             while (recentPositions.size > 3) {
                 recentPositions.removeFirst()
             }
@@ -619,25 +636,4 @@ class RideMetricsCalculator(
             else -> GpsQuality.POOR
         }
     }
-
-    private fun haversineDistanceMeters(
-        lat1: Double,
-        lon1: Double,
-        lat2: Double,
-        lon2: Double,
-    ): Double {
-        val earthRadiusM = 6_371_000.0
-        val dLat = (lat2 - lat1).toRadians()
-        val dLon = (lon2 - lon1).toRadians()
-
-        val a =
-            sin(dLat / 2).pow(2) +
-                cos(lat1.toRadians()) * cos(lat2.toRadians()) *
-                sin(dLon / 2).pow(2)
-
-        val c = 2 * asin(min(1.0, sqrt(a)))
-        return earthRadiusM * c
-    }
-
-    private fun Double.toRadians(): Double = this * PI / 180.0
 }

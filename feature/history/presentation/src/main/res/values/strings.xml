@@ -39,6 +39,7 @@
     <string name="ride_detail_elevation_gain">Elevation gain</string>
     <string name="ride_detail_calories">Calories</string>
     <string name="ride_detail_avg_power">Avg Power</string>
+    <string name="ride_detail_section_elevation_chart">Elevation</string>
 
     <!-- Route map -->
     <string name="ride_detail_section_route">Route</string>

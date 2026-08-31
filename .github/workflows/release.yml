@@ -1,11 +1,8 @@
 name: Release
 
-# Builds a signed release APK and publishes a GitHub Release whenever
-# changes land on `main` (e.g. after a pull request is merged).
-# Can also be triggered manually from the Actions tab.
+# Builds a signed release APK and publishes a GitHub Release.
+# Triggered manually from the Actions tab (Run workflow).
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -53,7 +50,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon -PversionCode=${{ github.run_number }}
 
       - name: Resolve version name
         id: version

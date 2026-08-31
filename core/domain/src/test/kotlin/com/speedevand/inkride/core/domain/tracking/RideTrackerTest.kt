@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNull
@@ -258,6 +259,42 @@ class RideTrackerTest {
         }
 
     @Test
+    fun `a BLE disconnect clears the connected flag`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(BleSample(timestampMs = 0L, heartRateBpm = 142, cadenceRpm = 88, connected = true))
+            assertThat(tracker.state.value.bleSensorConnected).isTrue()
+
+            ble.samples.emit(BleSample(timestampMs = 1000L, connected = false))
+            assertThat(tracker.state.value.bleSensorConnected).isFalse()
+        }
+
+    @Test
+    fun `HR set by a BLE sample survives a subsequent GPS-only metrics update`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(BleSample(timestampMs = 0L, heartRateBpm = 142, cadenceRpm = 88, connected = true))
+            assertThat(tracker.state.value.metrics.heartRateBpm).isEqualTo(142)
+
+            // A GPS fix must not clobber the HR/cadence the BLE collector just
+            // committed to state — it should read the live value at commit
+            // time inside the same atomic update, not a snapshot taken
+            // before it.
+            sensor.samples.emit(sampleAt(0L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f))
+
+            assertThat(tracker.state.value.metrics.heartRateBpm).isEqualTo(142)
+            assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(88)
+        }
+
+    @Test
     fun `over-speed alert fires once when speed crosses the threshold`() =
         runTest {
             val sensor = FakeSensorDataSource()
@@ -281,6 +318,57 @@ class RideTrackerTest {
             assertThat(alerts).hasSize(1)
             assertThat(alerts.first()).isInstanceOf(RideAlert.OverSpeed::class)
             collectorScope.cancel()
+        }
+
+    @Test
+    fun `cadence drops to zero after 3 seconds without a fresh BLE update`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(
+                BleSample(timestampMs = 0L, heartRateBpm = 142, cadenceRpm = 88, cadenceUpdatedAtMs = 0L, connected = true),
+            )
+            assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(88)
+
+            // A GPS fix 3.5s later with no intervening cadence update: cadence
+            // should read 0 (the sensor stopped notifying), while HR is unaffected.
+            sensor.samples.emit(sampleAt(3_500L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f))
+
+            assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(0)
+            assertThat(tracker.state.value.metrics.heartRateBpm).isEqualTo(142)
+        }
+
+    @Test
+    fun `a fresh cadence update before the timeout keeps the real value`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(BleSample(timestampMs = 0L, cadenceRpm = 88, cadenceUpdatedAtMs = 0L, connected = true))
+            ble.samples.emit(BleSample(timestampMs = 2_000L, cadenceRpm = 90, cadenceUpdatedAtMs = 2_000L, connected = true))
+            // 4500 - 2000 = 2500ms since the last cadence update, under the 3000ms timeout.
+            sensor.samples.emit(sampleAt(4_500L, latitude = 0.0, longitude = 0.0, speedFromGpsMps = 10.0, accuracy = 5.0f))
+
+            assertThat(tracker.state.value.metrics.cadenceRpm).isEqualTo(90)
+        }
+
+    @Test
+    fun `an implausible heart-rate spike is rejected and the last good value is kept`() =
+        runTest {
+            val sensor = FakeSensorDataSource()
+            val ble = FakeBleSensorDataSource()
+            val tracker = newTracker(testScheduler, sensor, ble = ble)
+
+            tracker.start()
+            ble.samples.emit(BleSample(timestampMs = 0L, heartRateBpm = 145, connected = true))
+            ble.samples.emit(BleSample(timestampMs = 1_000L, heartRateBpm = 255, connected = true))
+
+            assertThat(tracker.state.value.metrics.heartRateBpm).isEqualTo(145)
         }
 
     private fun newTracker(

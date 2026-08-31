@@ -79,4 +79,19 @@ class RideMetricsUiTest {
         val ui = metrics.toRideMetricsUi()
         assertThat(ui.gpsAccuracyM).isEqualTo("Poor (--)")
     }
+
+    @Test
+    fun `heart rate produces a zone label when age is known`() {
+        val metrics = RideMetrics(heartRateBpm = 150)
+        // HRmax(30) = 187; 150/187 = 80.2% -> zone 4.
+        val ui = metrics.toRideMetricsUi(age = 30)
+        assertThat(ui.heartRateZone).isEqualTo(4)
+    }
+
+    @Test
+    fun `no heart rate means no zone`() {
+        val metrics = RideMetrics(heartRateBpm = null)
+        val ui = metrics.toRideMetricsUi()
+        assertThat(ui.heartRateZone).isEqualTo(null)
+    }
 }

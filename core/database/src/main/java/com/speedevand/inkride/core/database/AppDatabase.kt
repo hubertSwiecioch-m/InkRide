@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
         BikeProfileEntity::class,
     ],
     version = 6,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userSettingsDao(): UserSettingsDao

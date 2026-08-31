@@ -141,4 +141,18 @@ class PowerEstimatorTest {
         // This should be less than uphill
         assertThat(flatWatts).isLessThan(uphillWatts)
     }
+
+    @Test
+    fun `higher altitude reduces air-density-driven power at the same speed and grade`() {
+        val seaLevelWatts = estimator.estimateWatts(8.0, 0.0, 0.0, defaultSettings, altitudeM = 0.0)
+        val highAltitudeWatts = estimator.estimateWatts(8.0, 0.0, 0.0, defaultSettings, altitudeM = 3_000.0)
+        assertThat(highAltitudeWatts).isLessThan(seaLevelWatts)
+    }
+
+    @Test
+    fun `null altitude falls back to sea-level air density`() {
+        val nullAltitudeWatts = estimator.estimateWatts(8.0, 0.0, 0.0, defaultSettings, altitudeM = null)
+        val explicitSeaLevelWatts = estimator.estimateWatts(8.0, 0.0, 0.0, defaultSettings, altitudeM = 0.0)
+        assertThat(nullAltitudeWatts).isEqualTo(explicitSeaLevelWatts)
+    }
 }

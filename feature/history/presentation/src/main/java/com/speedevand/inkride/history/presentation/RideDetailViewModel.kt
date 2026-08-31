@@ -8,6 +8,7 @@ import com.speedevand.inkride.core.domain.history.RideTrackPointRepository
 import com.speedevand.inkride.core.domain.onFailure
 import com.speedevand.inkride.core.domain.onSuccess
 import com.speedevand.inkride.core.domain.settings.UserSettingsRepository
+import com.speedevand.inkride.core.domain.tracking.buildElevationProfile
 import com.speedevand.inkride.core.presentation.UiText
 import com.speedevand.inkride.core.presentation.toUiText
 import kotlinx.coroutines.channels.Channel
@@ -41,26 +42,24 @@ class RideDetailViewModel(
                         .getLaps(rideId)
                         .onSuccess { laps = it }
                         .onFailure { error -> _events.send(RideDetailEvent.ShowError(error.toUiText())) }
-                    val trackPoints =
+                    val rawTrackPoints =
                         trackPointRepository
                             .getPoints(rideId)
                             .let { result ->
                                 when (result) {
-                                    is com.speedevand.inkride.core.domain.Result.Success -> {
-                                        result.data.map { point -> TrackPointUi(point.latitude, point.longitude) }
-                                    }
-
-                                    is com.speedevand.inkride.core.domain.Result.Error -> {
-                                        emptyList()
-                                    }
+                                    is com.speedevand.inkride.core.domain.Result.Success -> result.data
+                                    is com.speedevand.inkride.core.domain.Result.Error -> emptyList()
                                 }
                             }
+                    val trackPoints = rawTrackPoints.map { point -> TrackPointUi(point.latitude, point.longitude) }
+                    val elevationProfile = buildElevationProfile(rawTrackPoints)
                     userSettingsRepository.observeSettings().collect { settings ->
                         _state.update {
                             it.copy(
                                 ride = ride.toDetailUi(settings.units),
                                 laps = laps.map { lap -> lap.toLapUi(settings.units) },
                                 trackPoints = trackPoints,
+                                elevationChart = elevationProfile?.toChartUi(settings.units),
                                 isLoading = false,
                             )
                         }

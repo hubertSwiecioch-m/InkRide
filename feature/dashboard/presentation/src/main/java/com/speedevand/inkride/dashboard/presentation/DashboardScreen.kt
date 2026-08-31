@@ -222,7 +222,13 @@ fun DashboardScreen(
                     modifier = Modifier.weight(1f),
                 )
 
-                InfoBar(metrics = state.rideMetrics)
+                InfoBar(
+                    metrics = state.rideMetrics,
+                    sensorPaired =
+                        state.status != TrackingStatus.IDLE &&
+                            (state.userSettings.pairedHrmAddress != null || state.userSettings.pairedCadenceAddress != null),
+                    sensorConnected = state.bleSensorConnected,
+                )
 
                 RouteStatus(route = state.route)
 

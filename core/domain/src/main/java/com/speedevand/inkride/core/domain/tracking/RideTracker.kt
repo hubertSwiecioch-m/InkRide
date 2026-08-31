@@ -43,6 +43,10 @@ data class TrackingState(
     // Both null when no route is loaded.
     val activeRoute: PlannedRoute? = null,
     val routeProgress: RouteProgress? = null,
+    // Mirrors the latest BleSample.connected while a ride is active. False both
+    // when nothing is paired and when a paired sensor has dropped — Task 7's UI
+    // combines this with the paired-address settings to tell the two apart.
+    val bleSensorConnected: Boolean = false,
 )
 
 /**
@@ -66,6 +70,7 @@ class RideTracker(
     private val bleSensorDataSource: BleSensorDataSource,
     private val userSettingsRepository: UserSettingsRepository,
     private val routeFollower: RouteFollower = RouteFollower(),
+    private val heartRateFilter: HeartRateFilter = HeartRateFilter(),
     private val minSaveDistanceKm: Double = 0.01,
     // Smallest segment (km) that closes into an automatic final lap at stop.
     private val minLapDistanceKm: Double = 0.01,
@@ -113,6 +118,16 @@ class RideTracker(
     @Volatile
     private var lowSpeedSinceMs: Long? = null
 
+    // Timestamp (BLE sample clock) of the most recent cadence value actually
+    // reported by a CSC sensor. Distinguishes "cadence is still arriving"
+    // from "cadence is stale because the crank stopped and the sensor went
+    // quiet" — most CSC sensors stop notifying entirely rather than sending
+    // an explicit 0 rpm once the crank stops turning.
+    @Volatile
+    private var lastCadenceUpdateAtMs: Long? = null
+
+    private val cadenceTimeoutMs: Long = 3_000L
+
     // In-memory GPS track for the current ride, flushed to the database (keyed by
     // the new ride's id) at stop. Guarded by [trackPointsLock] because it's
     // appended from the sample-collection coroutine but snapshotted/cleared from
@@ -125,12 +140,6 @@ class RideTracker(
     private var lapBaselineDistanceKm: Double = 0.0
     private var lapBaselineMovingTimeSeconds: Long = 0L
     private var lapBaselineElevationGainM: Double = 0.0
-
-    // Latest BLE sensor reading, folded into every emitted RideMetrics. Written by
-    // the BLE collector coroutine, read by the GPS collector — @Volatile for
-    // cross-thread visibility.
-    @Volatile
-    private var latestBle: BleSample? = null
 
     // Latest user settings, kept current by the collection loop so metric
     // calculation always uses up-to-date weight/bike/age values.
@@ -236,7 +245,8 @@ class RideTracker(
         bleSensorDataSource.disconnect()
         metricsCalculator.reset()
         lowSpeedSinceMs = null
-        latestBle = null
+        lastCadenceUpdateAtMs = null
+        heartRateFilter.reset()
         resetAlertState()
         resetLapBaseline()
         _state.value = TrackingState()
@@ -253,7 +263,8 @@ class RideTracker(
                 sessionStartMs = System.currentTimeMillis()
                 metricsCalculator.reset()
                 lowSpeedSinceMs = null
-                latestBle = null
+                lastCadenceUpdateAtMs = null
+                heartRateFilter.reset()
                 resetAlertState()
                 resetLapBaseline()
                 synchronized(trackPointsLock) { trackPoints.clear() }
@@ -341,7 +352,7 @@ class RideTracker(
                 val bleJob =
                     launch {
                         bleSensorDataSource.observeSamples().collect { ble ->
-                            latestBle = ble
+                            ble.cadenceUpdatedAtMs?.let { lastCadenceUpdateAtMs = it }
                             val updated =
                                 _state.updateAndGet { current ->
                                     if (current.status == TrackingStatus.IDLE) {
@@ -350,9 +361,10 @@ class RideTracker(
                                         current.copy(
                                             metrics =
                                                 current.metrics.copy(
-                                                    heartRateBpm = ble.heartRateBpm,
-                                                    cadenceRpm = ble.cadenceRpm,
+                                                    heartRateBpm = heartRateFilter.filter(ble.heartRateBpm, ble.timestampMs),
+                                                    cadenceRpm = cadenceOrZeroIfStale(ble.cadenceRpm, ble.timestampMs),
                                                 ),
+                                            bleSensorConnected = ble.connected,
                                         )
                                     }
                                 }
@@ -374,16 +386,7 @@ class RideTracker(
                                 userSettings = latestSettings,
                                 isPaused = isPaused,
                             )
-                        // Fold the latest BLE reading into the published metrics; the
-                        // calculator stays GPS-only.
-                        val ble = latestBle
-                        val metrics =
-                            if (ble != null) {
-                                baseMetrics.copy(heartRateBpm = ble.heartRateBpm, cadenceRpm = ble.cadenceRpm)
-                            } else {
-                                baseMetrics
-                            }
-                        val autoStatus = evaluateAutoPause(statusBefore, metrics.currentSpeedKmh, sample.timestampMs)
+                        val autoStatus = evaluateAutoPause(statusBefore, baseMetrics.currentSpeedKmh, sample.timestampMs)
                         // Recompute route-follow progress from this fix; carry the
                         // previous value forward on a fix-less sample so the readout
                         // doesn't flicker between GPS updates.
@@ -397,9 +400,19 @@ class RideTracker(
                             _state.updateAndGet { current ->
                                 if (current.status == TrackingStatus.IDLE) return@updateAndGet current
                                 val resolved = if (current.status == statusBefore) autoStatus else current.status
+                                // Merge HR/cadence from whatever the BLE collector has
+                                // most recently committed to `current` inside this same
+                                // atomic update, rather than a snapshot read earlier —
+                                // otherwise a concurrent BLE commit landing in between
+                                // would be clobbered by a stale value here.
+                                val metrics =
+                                    baseMetrics.copy(
+                                        heartRateBpm = current.metrics.heartRateBpm,
+                                        cadenceRpm = cadenceOrZeroIfStale(current.metrics.cadenceRpm, sample.timestampMs),
+                                    )
                                 current.copy(status = resolved, metrics = metrics, routeProgress = progress)
                             }
-                        recordTrackPoint(newState.status, sample, metrics)
+                        recordTrackPoint(newState.status, sample, newState.metrics)
                         evaluateAlerts(newState.status, newState.metrics)
                         evaluateOffRoute(newState.status, newState.routeProgress)
                     }
@@ -446,6 +459,19 @@ class RideTracker(
                 current
             }
         }
+
+    /**
+     * Returns 0 once more than [cadenceTimeoutMs] has passed since the last
+     * actual cadence notification, instead of freezing at the last reported
+     * value.
+     */
+    private fun cadenceOrZeroIfStale(
+        rawCadenceRpm: Int?,
+        nowMs: Long,
+    ): Int? {
+        val lastUpdate = lastCadenceUpdateAtMs ?: return rawCadenceRpm
+        return if (nowMs - lastUpdate > cadenceTimeoutMs) 0 else rawCadenceRpm
+    }
 
     private fun resetAlertState() =
         synchronized(alertLock) {

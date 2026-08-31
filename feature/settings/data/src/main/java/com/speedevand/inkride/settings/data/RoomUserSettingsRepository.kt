@@ -1,6 +1,7 @@
 package com.speedevand.inkride.settings.data
 
 import android.database.sqlite.SQLiteFullException
+import android.util.Log
 import com.speedevand.inkride.core.database.BikeProfileDao
 import com.speedevand.inkride.core.database.UserSettingsDao
 import com.speedevand.inkride.core.database.UserSettingsEntity
@@ -14,6 +15,8 @@ import com.speedevand.inkride.core.domain.settings.UserSettings
 import com.speedevand.inkride.core.domain.settings.UserSettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+
+private const val TAG = "RoomUserSettingsRepository"
 
 class RoomUserSettingsRepository(
     private val dao: UserSettingsDao,
@@ -107,8 +110,10 @@ class RoomUserSettingsRepository(
             )
             Result.Success(Unit)
         } catch (e: SQLiteFullException) {
+            Log.e(TAG, "save failed: disk full", e)
             Result.Error(DataError.Local.DISK_FULL)
         } catch (e: Exception) {
+            Log.e(TAG, "save failed", e)
             Result.Error(DataError.Local.UNKNOWN)
         }
 }

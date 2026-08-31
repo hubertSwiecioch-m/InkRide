@@ -4,6 +4,8 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import com.speedevand.inkride.core.domain.history.RideRecord
 import com.speedevand.inkride.core.domain.settings.MeasurementUnits
+import com.speedevand.inkride.core.domain.tracking.ElevationProfile
+import com.speedevand.inkride.core.domain.tracking.ElevationProfilePoint
 import org.junit.jupiter.api.Test
 
 class RideRecordMappingTest {
@@ -60,5 +62,41 @@ class RideRecordMappingTest {
         val ui = sampleRide.toUi()
         // 1800 seconds = 00:30:00
         assertThat(ui.movingTime).isEqualTo("00:30:00")
+    }
+
+    @Test
+    fun `toChartUi with metric units formats altitude labels`() {
+        val profile =
+            ElevationProfile(
+                points = listOf(ElevationProfilePoint(0.0, 100.0), ElevationProfilePoint(5.0, 150.0)),
+                minAltitudeM = 100.0,
+                maxAltitudeM = 150.0,
+                minAltitudeDistanceKm = 0.0,
+                maxAltitudeDistanceKm = 5.0,
+            )
+
+        val ui = profile.toChartUi(MeasurementUnits.METRIC)
+
+        assertThat(ui.maxAltitudeLabel).isEqualTo("150 m")
+        assertThat(ui.minAltitudeLabel).isEqualTo("100 m")
+        assertThat(ui.maxAltitudeDistanceFraction).isEqualTo(1.0f)
+        assertThat(ui.minAltitudeDistanceFraction).isEqualTo(0.0f)
+    }
+
+    @Test
+    fun `toChartUi with imperial units converts altitude labels`() {
+        val profile =
+            ElevationProfile(
+                points = listOf(ElevationProfilePoint(0.0, 100.0), ElevationProfilePoint(5.0, 150.0)),
+                minAltitudeM = 100.0,
+                maxAltitudeM = 150.0,
+                minAltitudeDistanceKm = 0.0,
+                maxAltitudeDistanceKm = 5.0,
+            )
+
+        val ui = profile.toChartUi(MeasurementUnits.IMPERIAL)
+
+        assertThat(ui.maxAltitudeLabel).isEqualTo("492 ft")
+        assertThat(ui.minAltitudeLabel).isEqualTo("328 ft")
     }
 }

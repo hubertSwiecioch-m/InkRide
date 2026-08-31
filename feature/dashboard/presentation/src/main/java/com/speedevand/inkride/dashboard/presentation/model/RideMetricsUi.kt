@@ -2,6 +2,7 @@ package com.speedevand.inkride.dashboard.presentation.model
 
 import com.speedevand.inkride.core.domain.settings.MeasurementUnits
 import com.speedevand.inkride.core.domain.tracking.GpsQuality
+import com.speedevand.inkride.core.domain.tracking.HeartRateZoneCalculator
 import com.speedevand.inkride.core.domain.tracking.RideMetrics
 import com.speedevand.inkride.core.domain.tracking.WeatherTrend
 import com.speedevand.inkride.core.toClockString
@@ -10,6 +11,8 @@ import com.speedevand.inkride.dashboard.presentation.DashboardConstants.KM_TO_MI
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.M_TO_FT_FACTOR
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.TIME_ZERO
 import java.util.Locale
+
+private val heartRateZoneCalculator = HeartRateZoneCalculator()
 
 data class RideMetricsUi(
     val currentSpeedKmh: String = "0.0",
@@ -27,6 +30,9 @@ data class RideMetricsUi(
     val bearingDegrees: Float? = null,
     // Null when no BLE sensor of that kind is connected.
     val heartRateBpm: String? = null,
+    // Null whenever heartRateBpm is null; otherwise the rider's current
+    // training zone (1-5) from HeartRateZoneCalculator.
+    val heartRateZone: Int? = null,
     val cadenceRpm: String? = null,
     // Raw weather trend; the composable maps it to a localized symbol + label.
     val weatherTrend: WeatherTrend = WeatherTrend.UNKNOWN,
@@ -35,7 +41,10 @@ data class RideMetricsUi(
     val altitudeUnit: String = "m",
 )
 
-fun RideMetrics.toRideMetricsUi(units: MeasurementUnits = MeasurementUnits.METRIC): RideMetricsUi {
+fun RideMetrics.toRideMetricsUi(
+    units: MeasurementUnits = MeasurementUnits.METRIC,
+    age: Int = 30,
+): RideMetricsUi {
     val speedFactor = if (units == MeasurementUnits.IMPERIAL) KM_TO_MI_FACTOR else 1.0
     val distanceFactor = if (units == MeasurementUnits.IMPERIAL) KM_TO_MI_FACTOR else 1.0
     val altitudeFactor = if (units == MeasurementUnits.IMPERIAL) M_TO_FT_FACTOR else 1.0
@@ -55,6 +64,7 @@ fun RideMetrics.toRideMetricsUi(units: MeasurementUnits = MeasurementUnits.METRI
         gpsAccuracyM = formatGpsQuality(gpsQuality, gpsAccuracyM?.toDouble(), altitudeFactor),
         bearingDegrees = bearingDegrees,
         heartRateBpm = heartRateBpm?.toString(),
+        heartRateZone = heartRateBpm?.let { heartRateZoneCalculator.zoneFor(it, age) },
         cadenceRpm = cadenceRpm?.toString(),
         weatherTrend = weatherTrend,
         speedUnit = if (units == MeasurementUnits.IMPERIAL) "mph" else "km/h",

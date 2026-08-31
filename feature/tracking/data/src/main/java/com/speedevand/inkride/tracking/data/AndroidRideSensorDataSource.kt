@@ -18,6 +18,8 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.speedevand.inkride.core.domain.EmptyResult
 import com.speedevand.inkride.core.domain.Result
+import com.speedevand.inkride.core.domain.tracking.HeadingSmoother
+import com.speedevand.inkride.core.domain.tracking.PositionKalmanFilter
 import com.speedevand.inkride.core.domain.tracking.RideSensorDataSource
 import com.speedevand.inkride.core.domain.tracking.RideSensorSample
 import com.speedevand.inkride.core.domain.tracking.SensorError
@@ -31,8 +33,7 @@ class AndroidRideSensorDataSource(
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val pressureSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
-    private val accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    private val magnetometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    private val rotationVectorSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
 
     // All sensor/location callbacks are delivered on the main looper, so start()
     // can be called from any thread (e.g. a background coroutine in the process-
@@ -62,32 +63,35 @@ class AndroidRideSensorDataSource(
     // True-north heading (magnetic reading + declination), circular-EMA smoothed.
     private var lastHeading: Float? = null
 
-    // Raw smoothed magnetic heading state for the circular EMA filter.
-    private var smoothedHeadingDeg: Float? = null
+    private val headingSmoother = HeadingSmoother()
 
-    // Last heading actually emitted — used to throttle emissions to ~2° steps,
-    // matching the E-Ink compass's discrete rendering and cutting sample churn.
-    private var lastEmittedHeadingDeg: Float? = null
+    private val positionKalmanFilter = PositionKalmanFilter()
+
+    // Timestamp (the GPS fix's own device clock, i.e. Location.time) of the
+    // last fix actually fed into positionKalmanFilter, and the filter's last
+    // output. emitSample() fires far more often than GPS produces new fixes
+    // (barometer ~2Hz, heading on every ~2° step), and useGpsData stays true
+    // for up to maxGpsFixAgeMs after a fix — without this guard the filter
+    // would run a full predict+update cycle multiple times per second against
+    // an unchanged position, dragging its velocity estimate toward zero and
+    // over-shrinking its covariance between real fixes.
+    private var lastKalmanFedLocationTimeMs: Long = 0L
+    private var lastKalmanResult: com.speedevand.inkride.core.domain.tracking.FilteredPosition? = null
 
     // Magnetic declination (degrees to add to a magnetic heading to get true
     // north), refreshed from the current location. 0 until the first fix.
     private var magneticDeclinationDeg: Float = 0f
 
-    // True while the magnetometer reports UNRELIABLE/LOW calibration accuracy.
-    // While set, magnetometer-derived heading is suppressed (GPS course-over-
+    // True while the fused rotation vector reports UNRELIABLE/LOW accuracy
+    // (e.g. right after start, before gyro/mag fusion has converged). While
+    // set, rotation-vector-derived heading is suppressed (GPS course-over-
     // ground is still used when moving). Unknown accuracy is treated as usable
     // so devices that never fire onAccuracyChanged still get a compass.
-    private var isMagnetometerUnreliable: Boolean = false
-
-    // Heading is only emitted when it changes by at least this many degrees.
-    private val headingEmitThresholdDeg: Float = 2.0f
-
-    // EMA smoothing factor for the magnetometer heading (higher = more responsive,
-    // lower = smoother). 0.2 tames magnetometer jitter without feeling laggy.
-    private val headingSmoothingAlpha: Float = 0.2f
+    private var isOrientationSensorUnreliable: Boolean = false
 
     // Above this speed, GPS course-over-ground is more trustworthy than the
-    // magnetometer (which is easily disturbed by the bike frame and phone).
+    // rotation-vector heading (which is easily disturbed by the bike frame
+    // and phone, and the underlying magnetometer fusion in particular).
     private val gpsBearingMinSpeedMps: Float = 2.0f
 
     // Satellite count from GnssStatus — used for GPS quality assessment.
@@ -149,61 +153,37 @@ class AndroidRideSensorDataSource(
 
         val localOrientationListener =
             object : SensorEventListener {
-                private var gravity: FloatArray? = null
-                private var geomagnetic: FloatArray? = null
-
                 override fun onSensorChanged(event: SensorEvent?) {
-                    if (event == null) return
-                    if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) gravity = event.values.clone()
-                    if (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) geomagnetic = event.values.clone()
+                    if (event == null || event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
 
-                    // Suppress heading while the magnetometer is known to be miscalibrated.
-                    // A figure-eight calibration is needed; until then the azimuth is
-                    // garbage and would point the compass in a random direction.
-                    // (GPS course-over-ground, set in the location listener, is unaffected.)
-                    if (isMagnetometerUnreliable) return
+                    // Suppress heading while the fused rotation vector is known to be
+                    // unreliable. (GPS course-over-ground, set in the location
+                    // listener, is unaffected.)
+                    if (isOrientationSensorUnreliable) return
 
-                    if (gravity != null && geomagnetic != null) {
-                        val r = FloatArray(9)
-                        val i = FloatArray(9)
-                        if (SensorManager.getRotationMatrix(r, i, gravity, geomagnetic)) {
-                            val orientation = FloatArray(3)
-                            SensorManager.getOrientation(r, orientation)
-                            val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                            // Convert magnetic azimuth to a true-north heading.
-                            val magneticHeading = (azimuth + 360f) % 360f
-                            val trueHeading = (magneticHeading + magneticDeclinationDeg + 360f) % 360f
+                    val r = FloatArray(9)
+                    SensorManager.getRotationMatrixFromVector(r, event.values)
+                    val orientation = FloatArray(3)
+                    SensorManager.getOrientation(r, orientation)
+                    val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
 
-                            // Circular EMA: blend along the shortest arc so the filter
-                            // doesn't lurch the long way around the 0/360 wrap point.
-                            val smoothed =
-                                smoothedHeadingDeg?.let { prev ->
-                                    val delta = angularDifference(prev, trueHeading)
-                                    (prev + headingSmoothingAlpha * delta + 360f) % 360f
-                                } ?: trueHeading
-                            smoothedHeadingDeg = smoothed
-                            lastHeading = smoothed
-                            lastHeadingTimestampMs = System.currentTimeMillis()
+                    val update = headingSmoother.update(azimuth, magneticDeclinationDeg)
+                    lastHeading = update.smoothedHeadingDeg
+                    lastHeadingTimestampMs = System.currentTimeMillis()
 
-                            // Throttle emissions to ~2° steps to avoid flooding the
-                            // sample flow (and the E-Ink redraw) with micro-changes.
-                            val emitted = lastEmittedHeadingDeg
-                            if (emitted == null || Math.abs(angularDifference(emitted, smoothed)) >= headingEmitThresholdDeg) {
-                                lastEmittedHeadingDeg = smoothed
-                                emitSample()
-                            }
-                        }
-                    }
+                    // Throttle emissions to ~2° steps to avoid flooding the
+                    // sample flow (and the E-Ink redraw) with micro-changes.
+                    if (update.shouldEmit) emitSample()
                 }
 
                 override fun onAccuracyChanged(
                     sensor: Sensor?,
                     accuracy: Int,
                 ) {
-                    // Track magnetometer calibration health. UNRELIABLE/LOW mean the
-                    // compass needs recalibration and its heading can't be trusted.
-                    if (sensor?.type == Sensor.TYPE_MAGNETIC_FIELD) {
-                        isMagnetometerUnreliable = accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE ||
+                    // Track rotation-vector fusion health. UNRELIABLE/LOW mean the
+                    // fused heading can't be trusted yet.
+                    if (sensor?.type == Sensor.TYPE_ROTATION_VECTOR) {
+                        isOrientationSensorUnreliable = accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE ||
                             accuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW
                     }
                 }
@@ -252,16 +232,7 @@ class AndroidRideSensorDataSource(
             )
         }
 
-        accelerometer?.also {
-            sensorManager.registerListener(
-                localOrientationListener,
-                it,
-                SensorManager.SENSOR_DELAY_NORMAL,
-                callbackHandler,
-            )
-        }
-
-        magnetometer?.also {
+        rotationVectorSensor?.also {
             sensorManager.registerListener(
                 localOrientationListener,
                 it,
@@ -331,6 +302,31 @@ class AndroidRideSensorDataSource(
                 now, // fallback
             )
 
+        // Smooth the raw fix through the Kalman filter before it becomes this
+        // sample's position — RideMetricsCalculator's distance/speed/outlier
+        // logic then operates on the filtered position exactly as it did on
+        // the raw one. speedFromGpsMps (the chipset's own Doppler estimate)
+        // is left untouched, so RideMetricsCalculator's existing GPS-vs-
+        // distance cross-validation still compares two independent signals.
+        val filteredPosition =
+            if (useGpsData) {
+                val fixTimeMs = location!!.time
+                if (fixTimeMs != lastKalmanFedLocationTimeMs) {
+                    lastKalmanFedLocationTimeMs = fixTimeMs
+                    positionKalmanFilter
+                        .update(
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            accuracyM = location.accuracy,
+                            timestampMs = fixTimeMs,
+                        ).also { lastKalmanResult = it }
+                } else {
+                    lastKalmanResult
+                }
+            } else {
+                null
+            }
+
         // Bearing source: while moving, GPS course-over-ground is far more
         // reliable than the magnetometer (which is distorted by the bike frame
         // and the phone's own fields). When slow or stopped, fall back to the
@@ -353,8 +349,8 @@ class AndroidRideSensorDataSource(
         samplesFlow.tryEmit(
             RideSensorSample(
                 timestampMs = sampleTimestampMs,
-                latitude = if (useGpsData) location.latitude else null,
-                longitude = if (useGpsData) location.longitude else null,
+                latitude = filteredPosition?.latitude,
+                longitude = filteredPosition?.longitude,
                 altitudeFromGpsM = if (useGpsData) location.let { if (it.hasAltitude()) it.altitude else null } else null,
                 altitudeFromBarometerM = altitudeFromBarometer,
                 speedFromGpsMps = if (useGpsData) location.let { if (it.hasSpeed()) it.speed.toDouble() else null } else null,
@@ -386,29 +382,17 @@ class AndroidRideSensorDataSource(
         lastLocation = null
         lastPressureHpa = null
         lastHeading = null
-        smoothedHeadingDeg = null
-        lastEmittedHeadingDeg = null
+        headingSmoother.reset()
+        positionKalmanFilter.reset()
+        lastKalmanFedLocationTimeMs = 0L
+        lastKalmanResult = null
         magneticDeclinationDeg = 0f
-        isMagnetometerUnreliable = false
+        isOrientationSensorUnreliable = false
         lastSatelliteCount = null
         lastGpsTimestampMs = 0L
         lastPressureTimestampMs = 0L
         lastHeadingTimestampMs = 0L
         lastPressureEmitTimestampMs = 0L
-    }
-
-    /**
-     * Shortest signed angular difference from [from] to [to], in degrees,
-     * within (-180, 180]. Used so circular EMA and threshold checks move along
-     * the short arc across the 0/360 wrap point.
-     */
-    private fun angularDifference(
-        from: Float,
-        to: Float,
-    ): Float {
-        var diff = (to - from + 540f) % 360f - 180f
-        if (diff == -180f) diff = 180f
-        return diff
     }
 
     private fun hasLocationPermission(): Boolean {

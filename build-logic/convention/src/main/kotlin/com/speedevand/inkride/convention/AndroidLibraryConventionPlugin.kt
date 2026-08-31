@@ -29,6 +29,14 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
                     sourceCompatibility = JavaVersion.VERSION_11
                     targetCompatibility = JavaVersion.VERSION_11
                 }
+                // Unmocked Android framework calls (e.g. android.util.Log) would
+                // otherwise throw in plain JVM unit tests. Returning defaults lets
+                // production code call them without every test needing a mock.
+                testOptions {
+                    unitTests {
+                        isReturnDefaultValues = true
+                    }
+                }
             }
 
             tasks.withType<Test>().configureEach {

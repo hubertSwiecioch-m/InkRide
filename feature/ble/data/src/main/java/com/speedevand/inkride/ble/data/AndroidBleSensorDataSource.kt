@@ -42,11 +42,27 @@ class AndroidBleSensorDataSource(
     @Volatile
     private var connectedAddresses: Set<String> = emptySet()
 
+    // Addresses with an actual live GATT connection right now (a subset of
+    // connectedAddresses — a desired address may still be reconnecting).
+    // Mutated from the GATT callback thread (onConnectionStateChange) and from
+    // disconnect() (called from the settings-driven connect() coroutine and
+    // from RideTracker.stop()), so this is genuinely cross-thread. A
+    // ConcurrentHashMap-backed set keeps individual add/remove/clear calls
+    // safe from corruption; the narrow remaining race — a stray
+    // STATE_CONNECTED from a gatt being torn down landing just after
+    // disconnect()'s clear() — can leave `connected` transiently stale for
+    // one BLE cycle, self-correcting on that gatt's own STATE_DISCONNECTED.
+    // Acceptable for a best-effort UI indicator, not safety-critical state.
+    private val liveAddresses: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     @Volatile
     private var latestHeartRate: Int? = null
 
     @Volatile
     private var latestCadence: Int? = null
+
+    @Volatile
+    private var lastCadenceUpdateAtMs: Long? = null
 
     @Volatile
     private var latestWheelRevolutions: Long? = null
@@ -83,9 +99,11 @@ class AndroidBleSensorDataSource(
         gatts.clear()
         cadenceTrackers.clear()
         pendingNotifications.clear()
+        liveAddresses.clear()
         connectedAddresses = emptySet()
         latestHeartRate = null
         latestCadence = null
+        lastCadenceUpdateAtMs = null
         latestWheelRevolutions = null
         emit()
     }
@@ -97,6 +115,8 @@ class AndroidBleSensorDataSource(
                 heartRateBpm = latestHeartRate,
                 cadenceRpm = latestCadence,
                 wheelRevolutions = latestWheelRevolutions,
+                connected = liveAddresses.isNotEmpty(),
+                cadenceUpdatedAtMs = lastCadenceUpdateAtMs,
             )
     }
 
@@ -107,8 +127,24 @@ class AndroidBleSensorDataSource(
                 status: Int,
                 newState: Int,
             ) {
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    gatt.discoverServices()
+                val address = gatt.device?.address
+                when (newState) {
+                    BluetoothProfile.STATE_CONNECTED -> {
+                        address?.let { liveAddresses.add(it) }
+                        gatt.discoverServices()
+                    }
+
+                    BluetoothProfile.STATE_DISCONNECTED -> {
+                        address?.let { liveAddresses.remove(it) }
+                        // Don't let a stale reading from the now-gone sensor
+                        // linger — the rider should see it's disconnected, not
+                        // its last value forever.
+                        latestHeartRate = null
+                        latestCadence = null
+                        lastCadenceUpdateAtMs = null
+                        latestWheelRevolutions = null
+                        emit()
+                    }
                 }
             }
 
@@ -174,7 +210,10 @@ class AndroidBleSensorDataSource(
             BleGatt.CSC_MEASUREMENT -> {
                 val tracker = address?.let { cadenceTrackers[it] } ?: return
                 val result = tracker.update(data) ?: return
-                result.cadenceRpm?.let { latestCadence = it }
+                result.cadenceRpm?.let {
+                    latestCadence = it
+                    lastCadenceUpdateAtMs = System.currentTimeMillis()
+                }
                 result.wheelRevolutions?.let { latestWheelRevolutions = it }
                 emit()
             }

@@ -57,4 +57,5 @@ data class DashboardState(
     val lastLap: LapSummaryUi? = null,
     val goal: GoalProgressUi? = null,
     val route: RouteProgressUi? = null,
+    val bleSensorConnected: Boolean = false,
 )

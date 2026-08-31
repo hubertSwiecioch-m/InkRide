@@ -29,8 +29,14 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
+      - name: Check Kotlin formatting (ktlint)
+        run: ./gradlew ktlintCheck --no-daemon
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Run Android Lint
+        run: ./gradlew lintDebug --no-daemon
 
       - name: Assemble debug APK
         run: ./gradlew assembleDebug --no-daemon
