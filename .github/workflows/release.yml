@@ -65,13 +65,38 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
+      - name: Extract changelog section
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.name }}"
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { found=1; next }
+            found && /^## \[/ { found=0 }
+            found { print }
+          ' CHANGELOG.md > "$NOTES_FILE"
+
+          if [ -s "$NOTES_FILE" ]; then
+            sed -i '/./,$!d' "$NOTES_FILE"  # drop the leading blank line left by the awk match
+          else
+            echo "_No CHANGELOG.md entry found for version $VERSION._" > "$NOTES_FILE"
+          fi
+
+          {
+            echo ""
+            echo "---"
+            echo "Automated release built from \`main\` (commit ${{ github.sha }})."
+            echo "Signed release APK attached below."
+          } >> "$NOTES_FILE"
+
+          echo "notes_file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.name }}-build.${{ github.run_number }}
           name: InkRide v${{ steps.version.outputs.name }} (build ${{ github.run_number }})
-          body: |
-            Automated release built from `main` (commit ${{ github.sha }}).
-            Signed release APK attached below.
+          body_path: ${{ steps.changelog.outputs.notes_file }}
           files: app/build/outputs/apk/release/*.apk
           fail_on_unmatched_files: true
