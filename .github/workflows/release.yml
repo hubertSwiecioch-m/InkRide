@@ -1,11 +1,8 @@
 name: Release
 
-# Builds a signed release APK and publishes a GitHub Release whenever
-# changes land on `main` (e.g. after a pull request is merged).
-# Can also be triggered manually from the Actions tab.
+# Builds a signed release APK and publishes a GitHub Release.
+# Triggered manually from the Actions tab (Run workflow).
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 permissions:
