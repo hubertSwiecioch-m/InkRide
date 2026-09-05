@@ -12,11 +12,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.text.TextMMD
 import com.speedevand.inkride.core.presentation.DesignConstants
+import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.dashboard.presentation.R
 import com.speedevand.inkride.dashboard.presentation.TrackingStatus
 
@@ -59,6 +61,7 @@ fun StatusIndicator(status: TrackingStatus) {
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = color,
+            modifier = Modifier.testTag(DashboardTestTags.STATUS_INDICATOR),
         )
     }
 }

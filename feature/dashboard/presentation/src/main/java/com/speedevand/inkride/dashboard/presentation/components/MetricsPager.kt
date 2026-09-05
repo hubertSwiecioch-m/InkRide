@@ -13,10 +13,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.speedevand.inkride.core.domain.settings.UserSettings
 import com.speedevand.inkride.core.presentation.DesignConstants
+import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.dashboard.presentation.R
 import com.speedevand.inkride.dashboard.presentation.model.RideMetricsUi
 
@@ -48,7 +50,7 @@ fun MetricsPager(
 
     VerticalPager(
         state = pagerState,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().testTag(DashboardTestTags.METRICS_PAGER),
         horizontalAlignment = Alignment.CenterHorizontally,
         flingBehavior =
             PagerDefaults.flingBehavior(
@@ -98,6 +100,7 @@ private fun PrimaryMetricsPage(
                             value = metrics.distanceKm,
                             unit = metrics.distanceUnit,
                             modifier = Modifier.weight(1f),
+                            valueTestTag = DashboardTestTags.METRIC_DISTANCE,
                         )
                     }
                     if (settings.showMovingTime) {
@@ -106,6 +109,7 @@ private fun PrimaryMetricsPage(
                             value = metrics.movingTime,
                             unit = "",
                             modifier = Modifier.weight(1f),
+                            valueTestTag = DashboardTestTags.METRIC_MOVING_TIME,
                         )
                     }
                 }
@@ -118,6 +122,7 @@ private fun PrimaryMetricsPage(
                             value = metrics.averageSpeedKmh,
                             unit = metrics.speedUnit,
                             modifier = Modifier.weight(1f),
+                            valueTestTag = DashboardTestTags.METRIC_AVG_SPEED,
                         )
                     }
                     if (settings.showGrade) {
@@ -126,6 +131,7 @@ private fun PrimaryMetricsPage(
                             value = metrics.gradePercent,
                             unit = "%",
                             modifier = Modifier.weight(1f),
+                            valueTestTag = DashboardTestTags.METRIC_GRADE,
                         )
                     }
                 }
@@ -153,6 +159,7 @@ private fun SecondaryMetricsPage(
                             value = metrics.maxSpeedKmh,
                             unit = metrics.speedUnit,
                             modifier = Modifier.weight(1f),
+                            valueTestTag = DashboardTestTags.METRIC_MAX_SPEED,
                         )
                     }
                     if (settings.showElevationGain) {
@@ -161,6 +168,7 @@ private fun SecondaryMetricsPage(
                             value = metrics.elevationGainM,
                             unit = metrics.altitudeUnit,
                             modifier = Modifier.weight(1f),
+                            valueTestTag = DashboardTestTags.METRIC_ELEVATION_GAIN,
                         )
                     }
                 }
@@ -174,6 +182,7 @@ private fun SecondaryMetricsPage(
                             value = metrics.caloriesKcal,
                             unit = "kcal",
                             modifier = Modifier.weight(1f),
+                            valueTestTag = DashboardTestTags.METRIC_CALORIES,
                         )
                     }
                     if (settings.showAltitude) {
@@ -182,6 +191,7 @@ private fun SecondaryMetricsPage(
                             value = metrics.altitudeM,
                             unit = metrics.altitudeUnit,
                             modifier = Modifier.weight(1f),
+                            valueTestTag = DashboardTestTags.METRIC_ALTITUDE,
                         )
                     }
                     if (settings.showPower) {
@@ -190,6 +200,7 @@ private fun SecondaryMetricsPage(
                             value = metrics.powerWatts,
                             unit = "W",
                             modifier = Modifier.weight(1f),
+                            valueTestTag = DashboardTestTags.METRIC_POWER,
                         )
                     }
                 }

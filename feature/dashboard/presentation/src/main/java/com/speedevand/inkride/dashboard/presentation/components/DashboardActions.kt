@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.mudita.mmd.components.buttons.ButtonMMD
@@ -15,6 +16,7 @@ import com.speedevand.inkride.core.presentation.DesignConstants
 import com.speedevand.inkride.dashboard.presentation.DashboardAction
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.DISTANCE_ZERO
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.TIME_ZERO
+import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.dashboard.presentation.R
 import com.speedevand.inkride.dashboard.presentation.TrackingStatus
 import com.speedevand.inkride.dashboard.presentation.model.RideMetricsUi
@@ -42,7 +44,9 @@ fun DashboardActions(
             val primaryWeight = 1.5f
             val secondaryWeight = 1f
             ButtonMMD(
-                modifier = if (showSecondary) Modifier.weight(primaryWeight) else Modifier.fillMaxWidth(),
+                modifier =
+                    (if (showSecondary) Modifier.weight(primaryWeight) else Modifier.fillMaxWidth())
+                        .testTag(DashboardTestTags.START_PAUSE_BUTTON),
                 onClick = { onAction(DashboardAction.OnToggleTrackingClick) },
             ) {
                 TextMMD(
@@ -67,7 +71,7 @@ fun DashboardActions(
 
             if (showSecondary) {
                 ButtonMMD(
-                    modifier = Modifier.weight(secondaryWeight),
+                    modifier = Modifier.weight(secondaryWeight).testTag(DashboardTestTags.STOP_RESET_BUTTON),
                     onClick = {
                         if (status != TrackingStatus.IDLE) {
                             onAction(DashboardAction.OnStopClick)

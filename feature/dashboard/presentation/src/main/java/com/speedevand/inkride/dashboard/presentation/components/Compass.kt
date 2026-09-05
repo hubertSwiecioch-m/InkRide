@@ -15,11 +15,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.text.TextMMD
+import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.dashboard.presentation.R
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -54,6 +56,7 @@ fun Compass(
                 TextMMD(
                     text = "${(bearing ?: 0f).toInt()}°",
                     style = DashboardTextStyles.metricValue,
+                    modifier = Modifier.testTag(DashboardTestTags.COMPASS_BEARING),
                 )
                 TextMMD(
                     text = getDirectionString(bearing ?: 0f),

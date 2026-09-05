@@ -9,11 +9,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.text.TextMMD
+import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.dashboard.presentation.R
 
 /**
@@ -49,7 +51,7 @@ fun SpeedHero(
                 text = speed,
                 style = DashboardTextStyles.hero(heroSize),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(DashboardTestTags.SPEED_VALUE),
             )
         }
 
