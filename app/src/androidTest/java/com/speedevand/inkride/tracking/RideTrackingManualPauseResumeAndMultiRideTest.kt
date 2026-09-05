@@ -67,7 +67,13 @@ class RideTrackingManualPauseResumeAndMultiRideTest : RideTrackingE2ETestBase() 
         assertThat(composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE))
             .isEqualTo(DashboardConstants.DISTANCE_ZERO)
 
-        feedMovingSteps(count = 3)
+        // 5 steps, not 3: RideMetricsCalculator's GPS cold-start warm-up
+        // requires 3 consecutive reliable fixes before it trusts movement
+        // data at all, so distance can still legitimately read 0.00 right
+        // at that boundary — verified on-device. Every other absolute
+        // distance/speed check in this suite already clears the gate with
+        // margin; this one didn't.
+        feedMovingSteps(count = 5)
         val secondRideDistance = composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE).toDouble()
         assertThat(secondRideDistance).isGreaterThan(0.0)
         assertThat(secondRideDistance).isLessThan(firstRideDistance)
