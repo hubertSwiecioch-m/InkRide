@@ -21,6 +21,7 @@ import org.junit.Test
 class RideTrackingServiceLifecycleTest : RideTrackingE2ETestBase() {
     @Test
     fun startingARideStartsTheForegroundServiceAndStoppingTearsItDown() {
+        composeTestRule.waitUntil(timeoutMillis = 5_000L) { !isTrackingServiceRunning() }
         assertThat(isTrackingServiceRunning()).isFalse()
 
         composeTestRule.onNodeWithTag(DashboardTestTags.START_PAUSE_BUTTON).performClick()

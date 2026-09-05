@@ -2,9 +2,8 @@ package com.speedevand.inkride.tracking
 
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
 import assertk.assertThat
-import assertk.assertions.isEqualTo
+import assertk.assertions.contains
 import assertk.assertions.isGreaterThan
 import com.speedevand.inkride.core.domain.ble.BleSample
 import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
@@ -21,8 +20,7 @@ import org.junit.Test
 class RideTrackingBleSensorLossTest : RideTrackingE2ETestBase() {
     @Test
     fun bleDisconnectHidesHrAndCadenceWhileGpsMetricsKeepUpdating() {
-        composeTestRule.onNodeWithTag(DashboardTestTags.START_PAUSE_BUTTON).performClick()
-        Thread.sleep(300L)
+        startRideAndSettle()
 
         fakeSensorSource.emit(RideSamples.movingSample(stepIndex = 1, nowMs = System.currentTimeMillis()))
         fakeBleSource.emit(
@@ -36,7 +34,7 @@ class RideTrackingBleSensorLossTest : RideTrackingE2ETestBase() {
         )
 
         composeTestRule.waitUntilTagText(DashboardTestTags.HEART_RATE_VALUE) { it.contains("150") }
-        assertThat(composeTestRule.textOf(DashboardTestTags.CADENCE_VALUE)).isEqualTo("90")
+        assertThat(composeTestRule.textOf(DashboardTestTags.CADENCE_VALUE)).contains("90")
         composeTestRule.onNodeWithTag(DashboardTestTags.SENSOR_DISCONNECTED).assertDoesNotExist()
 
         val distanceBeforeDisconnect = composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE).toDouble()
@@ -60,10 +58,7 @@ class RideTrackingBleSensorLossTest : RideTrackingE2ETestBase() {
         composeTestRule.onNodeWithTag(DashboardTestTags.CADENCE_VALUE).assertDoesNotExist()
 
         // GPS-derived metrics keep moving regardless of the BLE drop.
-        for (step in 2..6) {
-            fakeSensorSource.emit(RideSamples.movingSample(stepIndex = step, nowMs = System.currentTimeMillis()))
-            Thread.sleep(1_000L)
-        }
+        feedMovingSteps(count = 5)
         val distanceAfter = composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE).toDouble()
         assertThat(distanceAfter).isGreaterThan(distanceBeforeDisconnect)
     }

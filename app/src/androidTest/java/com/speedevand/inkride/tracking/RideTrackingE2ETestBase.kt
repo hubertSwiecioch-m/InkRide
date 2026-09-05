@@ -5,6 +5,8 @@ import android.content.Intent
 import android.os.Build
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -14,9 +16,11 @@ import com.speedevand.inkride.core.domain.settings.UserSettings
 import com.speedevand.inkride.core.domain.settings.UserSettingsRepository
 import com.speedevand.inkride.core.domain.tracking.RideSensorDataSource
 import com.speedevand.inkride.core.domain.tracking.RideTracker
+import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.tracking.fakes.FakeBleSensorDataSource
 import com.speedevand.inkride.tracking.fakes.FakeRideSensorDataSource
 import com.speedevand.inkride.tracking.service.TrackingService
+import com.speedevand.inkride.tracking.support.RideSamples
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -106,5 +110,48 @@ abstract class RideTrackingE2ETestBase {
         )
         scenario?.close()
         unloadKoinModules(listOf(testModule))
+    }
+
+    // Monotonically increasing across a single test's lifetime (a fresh
+    // RideTrackingE2ETestBase instance per @Test), so every feedMovingSteps
+    // call continues the same straight-line path RideSamples expects —
+    // never re-using or skipping stepIndex values, which would either
+    // replay an old position or teleport (RideSamples.kt's cross-validation
+    // warning).
+    private var stepCursor = 0
+
+    protected fun startRideAndSettle() {
+        composeTestRule.onNodeWithTag(DashboardTestTags.START_PAUSE_BUTTON).performClick()
+        // Let RideTracker's settings collector pick up the seeded UserSettings
+        // before the first sample is processed.
+        Thread.sleep(300L)
+    }
+
+    protected fun feedMovingSteps(
+        count: Int,
+        speedKmh: Double = 20.0,
+        accuracyM: Float = 5f,
+        satelliteCount: Int = 8,
+        bearingDegrees: Float = 0f,
+        altitudeM: Double = 100.0,
+        includeGpsFix: Boolean = true,
+        stepIntervalMs: Long = 1_000L,
+    ) {
+        repeat(count) {
+            stepCursor++
+            fakeSensorSource.emit(
+                RideSamples.movingSample(
+                    stepIndex = stepCursor,
+                    nowMs = System.currentTimeMillis(),
+                    speedKmh = speedKmh,
+                    accuracyM = accuracyM,
+                    satelliteCount = satelliteCount,
+                    bearingDegrees = bearingDegrees,
+                    altitudeM = altitudeM,
+                    includeGpsFix = includeGpsFix,
+                ),
+            )
+            Thread.sleep(stepIntervalMs)
+        }
     }
 }

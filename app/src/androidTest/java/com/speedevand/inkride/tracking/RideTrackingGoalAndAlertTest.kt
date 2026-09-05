@@ -11,13 +11,15 @@ import com.speedevand.inkride.core.domain.settings.UserSettings
 import com.speedevand.inkride.core.domain.tracking.RideAlert
 import com.speedevand.inkride.core.domain.tracking.RideTracker
 import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
-import com.speedevand.inkride.tracking.support.RideSamples
+import com.speedevand.inkride.dashboard.presentation.R
+import com.speedevand.inkride.tracking.support.dashboardString
 import com.speedevand.inkride.tracking.support.waitUntilTagText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.koin.core.context.GlobalContext
 
@@ -27,8 +29,7 @@ class RideTrackingGoalAndAlertTest : RideTrackingE2ETestBase() {
 
     @Test
     fun settingADistanceGoalShowsProgressThenReached() {
-        composeTestRule.onNodeWithTag(DashboardTestTags.START_PAUSE_BUTTON).performClick()
-        Thread.sleep(300L)
+        startRideAndSettle()
 
         composeTestRule.onNodeWithTag(DashboardTestTags.GOAL_BUTTON).performClick()
         // Distance is the default goal type in the sheet; 0.05 km ≈ 9-10s of
@@ -38,36 +39,30 @@ class RideTrackingGoalAndAlertTest : RideTrackingE2ETestBase() {
 
         composeTestRule.waitUntilTagText(DashboardTestTags.GOAL_STATUS) { it.contains("km") }
 
-        for (step in 1..15) {
-            fakeSensorSource.emit(RideSamples.movingSample(stepIndex = step, nowMs = System.currentTimeMillis()))
-            Thread.sleep(1_000L)
-        }
+        feedMovingSteps(count = 15)
 
         composeTestRule.waitUntilTagText(DashboardTestTags.GOAL_STATUS, timeoutMillis = 20_000L) {
-            it == "Goal reached!"
+            it == dashboardString(R.string.dashboard_goal_reached)
         }
     }
 
     @Test
     fun overSpeedSampleEmitsExactlyOneAlert() {
-        composeTestRule.onNodeWithTag(DashboardTestTags.START_PAUSE_BUTTON).performClick()
-        Thread.sleep(300L)
+        startRideAndSettle()
 
-        val alerts = mutableListOf<RideAlert>()
+        val alerts = java.util.Collections.synchronizedList(mutableListOf<RideAlert>())
         val collectorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        collectorScope.launch {
-            GlobalContext.get().get<RideTracker>().alerts.collect { alerts.add(it) }
-        }
+        val collectorJob =
+            collectorScope.launch {
+                GlobalContext.get().get<RideTracker>().alerts.collect { alerts.add(it) }
+            }
 
         // 20 km/h steadily exceeds the 15 km/h threshold seeded above; the
         // alert is edge-triggered so it must fire exactly once even though
         // every sample after the crossing stays above the limit.
-        for (step in 1..10) {
-            fakeSensorSource.emit(RideSamples.movingSample(stepIndex = step, nowMs = System.currentTimeMillis()))
-            Thread.sleep(1_000L)
-        }
+        feedMovingSteps(count = 10)
 
-        collectorScope.cancel()
+        runBlocking { collectorJob.cancelAndJoin() }
         assertThat(alerts).hasSize(1)
         assertThat(alerts.first()).isInstanceOf(RideAlert.OverSpeed::class)
     }

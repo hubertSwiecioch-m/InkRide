@@ -1,9 +1,9 @@
 package com.speedevand.inkride.tracking
 
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
 import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
+import com.speedevand.inkride.dashboard.presentation.R
 import com.speedevand.inkride.tracking.support.RideSamples
+import com.speedevand.inkride.tracking.support.dashboardString
 import com.speedevand.inkride.tracking.support.waitUntilTagText
 import org.junit.Test
 
@@ -17,36 +17,31 @@ import org.junit.Test
 class RideTrackingAutoPauseTest : RideTrackingE2ETestBase() {
     @Test
     fun stoppingMovementAutoPausesAndMovingAgainAutoResumes() {
-        composeTestRule.onNodeWithTag(DashboardTestTags.START_PAUSE_BUTTON).performClick()
-        Thread.sleep(300L)
+        startRideAndSettle()
 
         // Get above the auto-pause threshold first.
-        repeat(3) { index ->
-            fakeSensorSource.emit(
-                RideSamples.movingSample(stepIndex = index + 1, nowMs = System.currentTimeMillis()),
-            )
-            Thread.sleep(1_000L)
+        feedMovingSteps(count = 3)
+        composeTestRule.waitUntilTagText(DashboardTestTags.STATUS_INDICATOR) {
+            it == dashboardString(R.string.dashboard_status_recording)
         }
-        composeTestRule.waitUntilTagText(DashboardTestTags.STATUS_INDICATOR) { it == "RECORDING RIDE" }
 
-        // Stop moving for longer than the 3s auto-pause delay.
+        // Stop moving for longer than the 3s auto-pause delay. Stationary
+        // samples don't advance the shared step cursor (position doesn't
+        // change while stopped).
         repeat(5) {
             fakeSensorSource.emit(RideSamples.stationarySample(nowMs = System.currentTimeMillis()))
             Thread.sleep(1_000L)
         }
         composeTestRule.waitUntilTagText(DashboardTestTags.STATUS_INDICATOR, timeoutMillis = 10_000L) {
-            it == "AUTO-PAUSED"
+            it == dashboardString(R.string.dashboard_status_auto_paused)
         }
 
-        // Move again, above the (higher) auto-resume threshold.
-        repeat(3) { index ->
-            fakeSensorSource.emit(
-                RideSamples.movingSample(stepIndex = 100 + index, nowMs = System.currentTimeMillis()),
-            )
-            Thread.sleep(1_000L)
-        }
+        // Move again, above the (higher) auto-resume threshold — continuing
+        // the same straight-line path from where the last moving sample left
+        // off, not teleporting.
+        feedMovingSteps(count = 3)
         composeTestRule.waitUntilTagText(DashboardTestTags.STATUS_INDICATOR, timeoutMillis = 10_000L) {
-            it == "RECORDING RIDE"
+            it == dashboardString(R.string.dashboard_status_recording)
         }
     }
 }

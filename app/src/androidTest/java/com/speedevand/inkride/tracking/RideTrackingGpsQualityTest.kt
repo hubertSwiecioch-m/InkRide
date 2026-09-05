@@ -1,13 +1,12 @@
 package com.speedevand.inkride.tracking
 
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
 import assertk.assertThat
-import assertk.assertions.contains
-import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isEqualTo
 import assertk.assertions.isNotEqualTo
 import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.tracking.support.RideSamples
+import com.speedevand.inkride.tracking.support.swipeMetricsPagerToNextPage
+import com.speedevand.inkride.tracking.support.swipeMetricsPagerToPreviousPage
 import com.speedevand.inkride.tracking.support.textOf
 import com.speedevand.inkride.tracking.support.waitUntilTagText
 import org.junit.Test
@@ -20,56 +19,28 @@ import org.junit.Test
 class RideTrackingGpsQualityTest : RideTrackingE2ETestBase() {
     @Test
     fun accuracyAndSatelliteCountDriveGpsQualityAndBarometerCoversDropouts() {
-        composeTestRule.onNodeWithTag(DashboardTestTags.START_PAUSE_BUTTON).performClick()
-        Thread.sleep(300L)
+        startRideAndSettle()
 
         // Warm up + a few good fixes: GOOD.
-        for (step in 1..3) {
-            fakeSensorSource.emit(
-                RideSamples.movingSample(
-                    stepIndex = step,
-                    nowMs = System.currentTimeMillis(),
-                    accuracyM = 5f,
-                    satelliteCount = 8,
-                ),
-            )
-            Thread.sleep(1_000L)
-        }
+        feedMovingSteps(count = 3, accuracyM = 5f, satelliteCount = 8)
         composeTestRule.waitUntilTagText(DashboardTestTags.GPS_QUALITY) { it.contains("Good") }
 
         // Degrade to FAIR (15m accuracy).
-        for (step in 4..6) {
-            fakeSensorSource.emit(
-                RideSamples.movingSample(
-                    stepIndex = step,
-                    nowMs = System.currentTimeMillis(),
-                    accuracyM = 15f,
-                    satelliteCount = 5,
-                ),
-            )
-            Thread.sleep(1_000L)
-        }
+        feedMovingSteps(count = 3, accuracyM = 15f, satelliteCount = 5)
         composeTestRule.waitUntilTagText(DashboardTestTags.GPS_QUALITY) { it.contains("Fair") }
 
         // Degrade further to POOR (60m accuracy, 1 satellite).
-        for (step in 7..9) {
-            fakeSensorSource.emit(
-                RideSamples.movingSample(
-                    stepIndex = step,
-                    nowMs = System.currentTimeMillis(),
-                    accuracyM = 60f,
-                    satelliteCount = 1,
-                ),
-            )
-            Thread.sleep(1_000L)
-        }
+        feedMovingSteps(count = 3, accuracyM = 60f, satelliteCount = 1)
         composeTestRule.waitUntilTagText(DashboardTestTags.GPS_QUALITY) { it.contains("Poor") }
 
         val distanceBeforeDropout = composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE).toDouble()
+
+        composeTestRule.swipeMetricsPagerToNextPage()
         val altitudeBeforeDropout = composeTestRule.textOf(DashboardTestTags.METRIC_ALTITUDE)
 
         // Full GPS dropout: only the barometer keeps reporting. Altitude
-        // must keep updating; distance must never go backwards.
+        // must keep updating; distance (GPS-derived) must not move at all
+        // since no lat/lon fix arrives.
         fakeSensorSource.emit(
             RideSamples.movingSample(
                 stepIndex = 10,
@@ -81,7 +52,9 @@ class RideTrackingGpsQualityTest : RideTrackingE2ETestBase() {
         Thread.sleep(1_000L)
 
         assertThat(composeTestRule.textOf(DashboardTestTags.METRIC_ALTITUDE)).isNotEqualTo(altitudeBeforeDropout)
+
+        composeTestRule.swipeMetricsPagerToPreviousPage()
         assertThat(composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE).toDouble())
-            .isGreaterThanOrEqualTo(distanceBeforeDropout)
+            .isEqualTo(distanceBeforeDropout)
     }
 }
