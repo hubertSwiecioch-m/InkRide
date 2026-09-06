@@ -1,8 +1,18 @@
+// Robolectric's GnssStatusBuilder is marked deprecated as a whole class in
+// 4.16.1 (nudging toward the real android.location.GnssStatus.Builder), but
+// that real Builder wasn't added until API 30+ -- it doesn't exist at all
+// under this module's sdk=26 Robolectric pin (verified against the actual
+// API-26 android-all-instrumented jar: no GnssStatus$Builder class present).
+// GnssStatusBuilder is the only viable way to construct a GnssStatus for a
+// test running at this API level.
+@file:Suppress("DEPRECATION")
+
 package com.speedevand.inkride.tracking.data
 
 import android.Manifest
 import android.content.Context
 import android.content.ContextWrapper
+import android.location.GnssStatus
 import android.location.Location
 import android.location.LocationManager
 import android.os.Looper
@@ -27,6 +37,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.GnssStatusBuilder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -157,4 +168,66 @@ class AndroidRideSensorDataSourceStartTest {
 
             collectorScope.cancel()
         }
+
+    @Test
+    fun `satellite count from a GnssStatus update flows into the next emitted sample`() =
+        runTest {
+            shadowOf(context).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+            val dataSource = AndroidRideSensorDataSource(context)
+            dataSource.start()
+
+            val collected = mutableListOf<RideSensorSample>()
+            val collectorScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+            collectorScope.launch { dataSource.observeSamples().collect { collected.add(it) } }
+
+            // 6 satellites in view, only 4 actually used in the fix -- exercises
+            // AndroidRideSensorDataSource's own onSatelliteStatusChanged counting
+            // logic (`status.usedInFix(i)`), not just a passthrough of a single
+            // pre-summed count.
+            val gnssStatus =
+                GnssStatusBuilder
+                    .create()
+                    .addSatellite(satellite(usedInFix = true))
+                    .addSatellite(satellite(usedInFix = true))
+                    .addSatellite(satellite(usedInFix = true))
+                    .addSatellite(satellite(usedInFix = true))
+                    .addSatellite(satellite(usedInFix = false))
+                    .addSatellite(satellite(usedInFix = false))
+                    .build()
+            // A GnssStatus update alone doesn't emit a sample -- it only updates
+            // lastSatelliteCount, which the *next* location fix picks up.
+            shadowOf(locationManager).simulateGnssStatus(gnssStatus)
+
+            val fix =
+                Location(LocationManager.GPS_PROVIDER).apply {
+                    latitude = 50.0
+                    longitude = 19.0
+                    accuracy = 5.0f
+                    speed = 4.0f
+                    bearing = 90f
+                    time = System.currentTimeMillis()
+                    elapsedRealtimeNanos = 1_000_000_000L
+                }
+            shadowOf(locationManager).simulateLocation(fix)
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertThat(collected).hasSize(1)
+            assertThat(collected.last().satelliteCount).isEqualTo(4)
+
+            collectorScope.cancel()
+        }
+
+    private fun satellite(usedInFix: Boolean): GnssStatusBuilder.GnssSatelliteInfo =
+        GnssStatusBuilder.GnssSatelliteInfo
+            .builder()
+            .setConstellation(GnssStatus.CONSTELLATION_GPS)
+            .setSvid(1)
+            .setCn0DbHz(30f)
+            .setElevation(45f)
+            .setAzimuth(90f)
+            .setHasEphemeris(true)
+            .setHasAlmanac(true)
+            .setUsedInFix(usedInFix)
+            .setCarrierFrequencyHz(null)
+            .build()
 }
