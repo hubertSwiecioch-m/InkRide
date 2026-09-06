@@ -98,4 +98,61 @@ class ElevationProfileBuilderTest {
 
         assertThat(profile.points).hasSize(3)
     }
+
+    @Test
+    fun `all points at the same position collapse to a single averaged point`() {
+        // A stationary-trainer ride: every point at the same lat/lon, so
+        // totalDistanceKm is 0 and bucketing by distance would divide by zero.
+        // Needs more points than maxSamples to actually reach bucketAverage().
+        val points =
+            (0 until 10).map { i ->
+                RideTrackPoint(
+                    timestampMs = i * 1000L,
+                    latitude = 52.0,
+                    longitude = 21.0,
+                    altitudeM = 100.0 + i,
+                )
+            }
+
+        val profile = buildElevationProfile(points, maxSamples = 5)!!
+
+        assertThat(profile.points).hasSize(1)
+        assertThat(profile.points[0].distanceKm).isEqualTo(0.0)
+        // Average of 100..109.
+        assertThat(profile.points[0].altitudeM).isCloseTo(104.5, 0.001)
+    }
+
+    @Test
+    fun `a series exactly at maxSamples is not downsampled`() {
+        val points =
+            (0 until 5).map { i ->
+                RideTrackPoint(
+                    timestampMs = i * 1000L,
+                    latitude = 52.0 + i * 0.01,
+                    longitude = 21.0,
+                    altitudeM = 100.0 + i,
+                )
+            }
+
+        val profile = buildElevationProfile(points, maxSamples = 5)!!
+
+        assertThat(profile.points).hasSize(5)
+    }
+
+    @Test
+    fun `a series one point over maxSamples is downsampled`() {
+        val points =
+            (0 until 6).map { i ->
+                RideTrackPoint(
+                    timestampMs = i * 1000L,
+                    latitude = 52.0 + i * 0.01,
+                    longitude = 21.0,
+                    altitudeM = 100.0 + i,
+                )
+            }
+
+        val profile = buildElevationProfile(points, maxSamples = 5)!!
+
+        assertThat(profile.points.size).isLessThan(6)
+    }
 }

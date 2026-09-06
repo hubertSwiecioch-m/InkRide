@@ -71,4 +71,61 @@ class RouteFollowerTest {
         // Full segment length from the start.
         assertThat(progress.distanceToNextWaypointM).isNotNull().isCloseTo(685.0, 25.0)
     }
+
+    @Test
+    fun `an empty route reports zero distance and is never off route`() {
+        val empty = route.copy(points = emptyList())
+
+        val progress = follower.evaluate(empty, latitude = 52.0, longitude = 21.005)
+
+        assertThat(progress.distanceToRouteM).isEqualTo(0.0)
+        assertThat(progress.isOffRoute).isFalse()
+        assertThat(progress.distanceToNextWaypointM).isNull()
+        assertThat(progress.nextWaypointName).isNull()
+    }
+
+    @Test
+    fun `a single-point route reports direct distance to that point and its waypoint`() {
+        val singlePoint =
+            route.copy(
+                points = listOf(RoutePoint(52.0, 21.0)),
+                waypoints = listOf(RouteWaypoint(52.0, 21.001, "Only")),
+            )
+
+        val onPoint = follower.evaluate(singlePoint, latitude = 52.0, longitude = 21.0)
+        assertThat(onPoint.distanceToRouteM).isEqualTo(0.0)
+        assertThat(onPoint.isOffRoute).isFalse()
+        assertThat(onPoint.nextWaypointName).isEqualTo("Only")
+        // Direct haversine to the waypoint, not an along-route distance --
+        // there's no polyline to measure along with a single point.
+        assertThat(onPoint.distanceToNextWaypointM).isNotNull().isCloseTo(68.5, 5.0)
+
+        val awayFromPoint = follower.evaluate(singlePoint, latitude = 52.001, longitude = 21.0)
+        assertThat(awayFromPoint.distanceToRouteM).isCloseTo(111.0, 8.0)
+        assertThat(awayFromPoint.isOffRoute).isTrue()
+    }
+
+    @Test
+    fun `a single-point route with no waypoints reports no next waypoint`() {
+        val singlePointNoWaypoints =
+            route.copy(points = listOf(RoutePoint(52.0, 21.0)), waypoints = emptyList())
+
+        val progress = follower.evaluate(singlePointNoWaypoints, latitude = 52.0, longitude = 21.0)
+
+        assertThat(progress.nextWaypointName).isNull()
+        assertThat(progress.distanceToNextWaypointM).isNull()
+    }
+
+    @Test
+    fun `duplicate consecutive route points produce a finite distance, not NaN`() {
+        val duplicatePoints =
+            route.copy(points = listOf(RoutePoint(52.0, 21.0), RoutePoint(52.0, 21.0)))
+
+        val progress = follower.evaluate(duplicatePoints, latitude = 52.001, longitude = 21.0)
+
+        assertThat(progress.distanceToRouteM.isNaN()).isFalse()
+        // The zero-length segment's projection collapses to point A, so the
+        // reported distance is the direct distance to that (duplicated) point.
+        assertThat(progress.distanceToRouteM).isCloseTo(111.0, 8.0)
+    }
 }
