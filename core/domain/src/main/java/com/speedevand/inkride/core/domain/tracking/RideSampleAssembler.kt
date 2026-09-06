@@ -67,6 +67,14 @@ class RideSampleAssembler(
             longitude = filteredPosition?.longitude,
             altitudeFromGpsM = rawFix?.altitudeM,
             altitudeFromBarometerM = altitudeFromBarometerM,
+            // Deliberately sourced from the raw GPS chipset's own Doppler speed
+            // (rawFix.speedMps), NOT from positionKalmanFilter's own speed
+            // estimate. RideMetricsCalculator's GPS-vs-distance cross-validation
+            // (see isCrossValidationFail in RideMetricsCalculator.kt) compares a
+            // filtered-position-derived speed against this field specifically
+            // because the two are independent signals; if this were fed from the
+            // Kalman filter instead, the check would silently become a permanent
+            // no-op, comparing a signal against a derivative of itself.
             speedFromGpsMps = rawFix?.speedMps?.toDouble(),
             accuracyM = rawFix?.accuracyM,
             bearingDegrees = bearing,

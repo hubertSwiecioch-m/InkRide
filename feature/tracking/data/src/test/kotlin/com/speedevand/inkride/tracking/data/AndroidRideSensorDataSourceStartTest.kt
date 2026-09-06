@@ -10,7 +10,10 @@ import androidx.test.core.app.ApplicationProvider
 import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isLessThan
+import assertk.assertions.isNotNull
 import com.speedevand.inkride.core.domain.Result
 import com.speedevand.inkride.core.domain.tracking.RideSensorSample
 import com.speedevand.inkride.core.domain.tracking.SensorError
@@ -121,10 +124,17 @@ class AndroidRideSensorDataSourceStartTest {
             assertThat(collected.last().speedFromGpsMps).isEqualTo(4.0)
             assertThat(collected.last().accuracyM).isEqualTo(5.0f)
 
+            // Small, physically plausible displacement over the 1-second gap
+            // (~11m north in 1s, well within PositionKalmanFilter's outlier
+            // gate; longitude is left unchanged from the first fix so this is
+            // a one-dimensional ~11 m/s nudge, not a multi-hundred-meter jump),
+            // so this fix gets blended into the filter's estimate rather than
+            // dead-reckoned as an implausible jump -- see RideSampleAssemblerTest's
+            // "a new fix time feeds the Kalman filter again" for the same technique.
             val secondFix =
                 Location(LocationManager.GPS_PROVIDER).apply {
-                    latitude = 50.01
-                    longitude = 19.01
+                    latitude = 50.0001
+                    longitude = 19.0
                     accuracy = 5.0f
                     speed = 4.0f
                     bearing = 90f
@@ -135,6 +145,15 @@ class AndroidRideSensorDataSourceStartTest {
             shadowOf(Looper.getMainLooper()).idle()
 
             assertThat(collected).hasSize(2)
+            // Proves the second fix was actually blended into the filter
+            // (moved from the first sample's latitude), not just that a second
+            // sample arrived -- a gated outlier or a broken dedup guard
+            // returning the cached first-fix result would both also produce
+            // hasSize(2) with latitude ~= 50.0.
+            assertThat(collected.last().latitude).isNotNull()
+            assertThat(collected.last().latitude!!).isGreaterThan(50.0)
+            assertThat(collected.last().latitude!!).isLessThan(50.0001)
+            assertThat(collected.last().bearingDegrees).isEqualTo(90f)
 
             collectorScope.cancel()
         }

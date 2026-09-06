@@ -1,13 +1,11 @@
 package com.speedevand.inkride.core.domain.tracking
 
 import assertk.assertThat
-import assertk.assertions.hasSize
-import assertk.assertions.isCloseTo
 import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThan
-import assertk.assertions.isNull
 import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import org.junit.jupiter.api.Test
 
 class RideSampleAssemblerTest {
@@ -179,6 +177,36 @@ class RideSampleAssemblerTest {
                 headingTimestampMs = 0L,
             )
 
+        assertThat(sample.bearingDegrees).isEqualTo(200f)
+    }
+
+    @Test
+    fun `fast GPS bearing is used exactly at the minimum speed threshold`() {
+        val assembler = RideSampleAssembler()
+        val fix =
+            RawGpsFix(
+                latitude = 50.0,
+                longitude = 19.0,
+                accuracyM = 5.0f,
+                fixTimeMs = 1_000L,
+                speedMps = 2.0f,
+                bearingDeg = 200f,
+            )
+
+        val sample =
+            assembler.assemble(
+                rawFix = fix,
+                pressureHpa = null,
+                altitudeFromBarometerM = null,
+                smoothedHeadingDeg = 10f,
+                nowMs = 1_000L,
+                gpsTimestampMs = 1_000L,
+                pressureTimestampMs = 0L,
+                headingTimestampMs = 0L,
+            )
+
+        // The >= comparison in the original code means the boundary itself
+        // counts as "fast enough" to trust GPS bearing.
         assertThat(sample.bearingDegrees).isEqualTo(200f)
     }
 
