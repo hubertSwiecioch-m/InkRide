@@ -40,7 +40,11 @@ tests reveal.
    Robolectric needed).
 3. Add Robolectric-based smoke tests in `feature:tracking:data` for `start()`'s permission/
    hardware-gating branches (`LOCATION_DENIED`, `GPS_MISSING`, happy path).
-4. Fix any bugs surfaced during test-writing (e.g. an incorrect gating threshold, a bearing
+4. Add one Robolectric integration test driving a real `Location` fix through the actual
+   `AndroidRideSensorDataSource` listener via `simulateLocation` (see "Correction" section below —
+   this is the only end-to-end coverage of the real class, replacing a mistaken assumption that
+   the existing E2E suite provided it).
+5. Fix any bugs surfaced during test-writing (e.g. an incorrect gating threshold, a bearing
    wraparound edge case, a timestamp-arbitration mistake).
 
 ## Non-goals
@@ -118,8 +122,15 @@ internally, exposes `assemble(...)` and `reset()`.
   it's an Android static call), and delegate to `assembler.assemble(...)`, then
   `samplesFlow.tryEmit(result)`.
 - `stop()` calls `assembler.reset()` instead of resetting `positionKalmanFilter` directly.
-- `gpsBearingMinSpeedMps`, `maxGpsFixAgeMs`, `maxSourceAccuracyM` stay as fields on
-  `AndroidRideSensorDataSource` (they gate what becomes `rawFix`, not the assembler's own logic).
+- `maxGpsFixAgeMs` and `maxSourceAccuracyM` stay as fields on `AndroidRideSensorDataSource` — they
+  gate what becomes `rawFix`, which is still decided here, not inside the assembler.
+  `gpsBearingMinSpeedMps` moves entirely into `RideSampleAssembler` (as a constructor parameter
+  with the same `2.0f` default) since bearing-source selection is now fully the assembler's
+  responsibility and `AndroidRideSensorDataSource` has no other use for the constant. This also
+  sidesteps a real Kotlin property-initialization-order hazard: the constant is declared later in
+  the class body than where the Kalman-related fields currently sit, so keeping a duplicate copy
+  there and passing it into the assembler's constructor at field-init time would read an
+  unitialized `0.0f` unless the two declarations were carefully reordered.
 
 ## Test matrix (`RideSampleAssemblerTest`, in `core:domain`)
 
@@ -176,17 +187,57 @@ Requires adding to `feature/tracking/data/build.gradle.kts`: `testImplementation
 `testImplementation(libs.robolectric)`, `testImplementation(libs.androidx.test.core)`,
 `testRuntimeOnly(libs.junit.vintage.engine)` — identical deps to `core:database`'s existing setup.
 
+## Correction: the existing E2E suite does not cover this class
+
+The original draft of this spec assumed the instrumented ride-tracking E2E suite
+(`app/src/androidTest/.../tracking/`) exercises `AndroidRideSensorDataSource` end-to-end and would
+catch a refactor regression. That's wrong: those tests inject `FakeRideSensorDataSource` (see
+`app/src/androidTest/.../tracking/fakes/FakeRideSensorDataSource.kt`) via Koin override, precisely
+*because* an emulator has no real GPS/barometer. `AndroidRideSensorDataSource` itself has **no**
+integration-level coverage today, before or after this phase would otherwise have added.
+
+**Addition to scope:** one Robolectric integration test that drives a real `Location` fix through
+the actual registered `LocationListener` inside `AndroidRideSensorDataSource`, using
+`Shadows.shadowOf(locationManager).simulateLocation(location)` (confirmed public API on
+`ShadowLocationManager`, Robolectric 4.16.1). This is the only test in this phase that exercises
+the real class end-to-end (construction → `start()` → listener → `emitSample()` →
+`RideSampleAssembler` → emitted `RideSensorSample`), and is what actually de-risks the refactor —
+not the E2E suite.
+
+Test (`AndroidRideSensorDataSourceLocationIntegrationTest`, same file or a second `@Test` in
+`AndroidRideSensorDataSourceStartTest`):
+- Grant location permission, `start()`, then `simulateLocation` with a `Location("gps")` built
+  with `latitude`, `longitude`, `accuracy`, `speed`, `bearing`, `time = <fresh>`, all set to
+  concrete values.
+- Collect the first value from `observeSamples()` (a `Flow`; use `Turbine`'s `test {}`, already a
+  convention-plugin test dependency) and assert `latitude`/`longitude` match the fix (Kalman
+  filter passes the first fix through unchanged, per `PositionKalmanFilterTest`'s own "first fix
+  passes through unchanged" case) and `speedFromGpsMps`/`accuracyM` match what was set.
+- A second `simulateLocation` call with a different fix and a later `time` asserts a second sample
+  is emitted with updated values — proving the listener → `emitSample()` → assembler wiring
+  actually runs more than once.
+
+**Explicitly not covered even after this addition:** barometer and rotation-vector sensor events.
+Simulating those requires constructing `Sensor` instances via Robolectric's `ShadowSensorManager`
+(package-private `Sensor` constructor, needs `Shadow.newInstanceOf`) and registering them before
+`AndroidRideSensorDataSource` is constructed (it reads `getDefaultSensor` in its constructor) —
+meaningfully more setup for comparatively simple passthrough fields already exercised by
+`RideSampleAssemblerTest`'s pure-logic cases. GPS is the fusion path worth the integration-test
+investment; barometer/heading integration is deferred (candidate for a later phase if a real bug
+ever surfaces there).
+
 ## Risks
 
-- The refactor touches production code (`AndroidRideSensorDataSource`) that the existing
-  instrumented ride-tracking E2E suite exercises end-to-end. After refactoring, that suite must
-  still pass unmodified — it's the regression backstop for this phase, not something this phase
-  adds to.
+- No other risks remain open — both Robolectric API questions are confirmed (above), and the
+  integration-coverage gap is now addressed by the new test rather than left as a caveat.
 
 ## Testing plan
 
 - `./gradlew :core:domain:test` — new `RideSampleAssemblerTest`, plus full existing domain suite
   (regression check on `HeadingSmoother`/`PositionKalmanFilter`, which are reused, not changed).
-- `./gradlew :feature:tracking:data:testDebugUnitTest` — new Robolectric smoke tests.
+- `./gradlew :feature:tracking:data:testDebugUnitTest` — new Robolectric smoke tests, including
+  the `simulateLocation` integration test, which is what actually verifies the refactor didn't
+  break the real class (see "Correction" above — the E2E suite does not, since it uses a fake).
 - Existing instrumented ride-tracking E2E suite (`androidTest`) re-run once, after the refactor,
-  to confirm no behavioral regression in the real `AndroidRideSensorDataSource`.
+  as a sanity check that DI wiring and app startup still work — not a regression check on
+  `AndroidRideSensorDataSource` itself, which it doesn't exercise.
