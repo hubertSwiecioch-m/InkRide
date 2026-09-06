@@ -19,7 +19,8 @@ import androidx.core.content.ContextCompat
 import com.speedevand.inkride.core.domain.EmptyResult
 import com.speedevand.inkride.core.domain.Result
 import com.speedevand.inkride.core.domain.tracking.HeadingSmoother
-import com.speedevand.inkride.core.domain.tracking.PositionKalmanFilter
+import com.speedevand.inkride.core.domain.tracking.RawGpsFix
+import com.speedevand.inkride.core.domain.tracking.RideSampleAssembler
 import com.speedevand.inkride.core.domain.tracking.RideSensorDataSource
 import com.speedevand.inkride.core.domain.tracking.RideSensorSample
 import com.speedevand.inkride.core.domain.tracking.SensorError
@@ -65,18 +66,14 @@ class AndroidRideSensorDataSource(
 
     private val headingSmoother = HeadingSmoother()
 
-    private val positionKalmanFilter = PositionKalmanFilter()
-
-    // Timestamp (the GPS fix's own device clock, i.e. Location.time) of the
-    // last fix actually fed into positionKalmanFilter, and the filter's last
-    // output. emitSample() fires far more often than GPS produces new fixes
-    // (barometer ~2Hz, heading on every ~2° step), and useGpsData stays true
-    // for up to maxGpsFixAgeMs after a fix — without this guard the filter
-    // would run a full predict+update cycle multiple times per second against
-    // an unchanged position, dragging its velocity estimate toward zero and
+    // Wraps PositionKalmanFilter with a same-fix dedup guard: emitSample()
+    // fires far more often than GPS produces new fixes (barometer ~2Hz,
+    // heading on every ~2° step), and a fix stays usable for up to
+    // maxGpsFixAgeMs — without the guard the filter would run a full
+    // predict+update cycle multiple times per second against an unchanged
+    // position, dragging its velocity estimate toward zero and
     // over-shrinking its covariance between real fixes.
-    private var lastKalmanFedLocationTimeMs: Long = 0L
-    private var lastKalmanResult: com.speedevand.inkride.core.domain.tracking.FilteredPosition? = null
+    private val sampleAssembler = RideSampleAssembler()
 
     // Magnetic declination (degrees to add to a magnetic heading to get true
     // north), refreshed from the current location. 0 until the first fix.
@@ -88,11 +85,6 @@ class AndroidRideSensorDataSource(
     // ground is still used when moving). Unknown accuracy is treated as usable
     // so devices that never fire onAccuracyChanged still get a compass.
     private var isOrientationSensorUnreliable: Boolean = false
-
-    // Above this speed, GPS course-over-ground is more trustworthy than the
-    // rotation-vector heading (which is easily disturbed by the bike frame
-    // and phone, and the underlying magnetometer fusion in particular).
-    private val gpsBearingMinSpeedMps: Float = 2.0f
 
     // Satellite count from GnssStatus — used for GPS quality assessment.
     private var lastSatelliteCount: Int? = null
@@ -284,82 +276,44 @@ class AndroidRideSensorDataSource(
                 SensorManager.getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE, it).toDouble()
             }
 
-        // Validate GPS data freshness and quality at the source.
-        // GPS fields are nulled out when the fix is stale or too inaccurate,
-        // but non-GPS sensor data (barometer, heading) still flows through.
+        // Validate GPS data freshness and quality at the source. A stale or
+        // inaccurate fix is treated as no fix at all (rawFix = null); non-GPS
+        // sensor data (barometer, heading) still flows through regardless.
         val now = System.currentTimeMillis()
         val isGpsFresh = location != null && (now - location.time) < maxGpsFixAgeMs
         val isGpsAccurate = location != null && location.hasAccuracy() && location.accuracy <= maxSourceAccuracyM
         val useGpsData = isGpsFresh && isGpsAccurate
 
-        // Use the most recent sensor timestamp to avoid stamping
-        // barometer/heading data with an old GPS timestamp or vice versa.
-        val sampleTimestampMs =
-            maxOf(
-                lastGpsTimestampMs,
-                lastPressureTimestampMs,
-                lastHeadingTimestampMs,
-                now, // fallback
+        val rawFix =
+            if (useGpsData) {
+                val fix = location!!
+                RawGpsFix(
+                    latitude = fix.latitude,
+                    longitude = fix.longitude,
+                    accuracyM = fix.accuracy,
+                    fixTimeMs = fix.time,
+                    speedMps = if (fix.hasSpeed()) fix.speed else null,
+                    bearingDeg = if (fix.hasBearing()) fix.bearing else null,
+                    altitudeM = if (fix.hasAltitude()) fix.altitude else null,
+                    satelliteCount = lastSatelliteCount,
+                )
+            } else {
+                null
+            }
+
+        val sample =
+            sampleAssembler.assemble(
+                rawFix = rawFix,
+                pressureHpa = pressureHpa?.toDouble(),
+                altitudeFromBarometerM = altitudeFromBarometer,
+                smoothedHeadingDeg = lastHeading,
+                nowMs = now,
+                gpsTimestampMs = lastGpsTimestampMs,
+                pressureTimestampMs = lastPressureTimestampMs,
+                headingTimestampMs = lastHeadingTimestampMs,
             )
 
-        // Smooth the raw fix through the Kalman filter before it becomes this
-        // sample's position — RideMetricsCalculator's distance/speed/outlier
-        // logic then operates on the filtered position exactly as it did on
-        // the raw one. speedFromGpsMps (the chipset's own Doppler estimate)
-        // is left untouched, so RideMetricsCalculator's existing GPS-vs-
-        // distance cross-validation still compares two independent signals.
-        val filteredPosition =
-            if (useGpsData) {
-                val fixTimeMs = location!!.time
-                if (fixTimeMs != lastKalmanFedLocationTimeMs) {
-                    lastKalmanFedLocationTimeMs = fixTimeMs
-                    positionKalmanFilter
-                        .update(
-                            latitude = location.latitude,
-                            longitude = location.longitude,
-                            accuracyM = location.accuracy,
-                            timestampMs = fixTimeMs,
-                        ).also { lastKalmanResult = it }
-                } else {
-                    lastKalmanResult
-                }
-            } else {
-                null
-            }
-
-        // Bearing source: while moving, GPS course-over-ground is far more
-        // reliable than the magnetometer (which is distorted by the bike frame
-        // and the phone's own fields). When slow or stopped, fall back to the
-        // smoothed magnetometer heading so the compass still points somewhere.
-        val gpsBearing =
-            if (useGpsData) {
-                location.let {
-                    if (it.hasBearing() && it.hasSpeed() && it.speed >= gpsBearingMinSpeedMps) it.bearing else null
-                }
-            } else {
-                null
-            }
-        // Drop NaN/Infinity (rotation-matrix or driver glitches) and normalize to
-        // [0, 360) so downstream consumers never see an out-of-range heading.
-        val bearing =
-            (gpsBearing ?: lastHeading)
-                ?.takeIf { it.isFinite() }
-                ?.let { ((it % 360f) + 360f) % 360f }
-
-        samplesFlow.tryEmit(
-            RideSensorSample(
-                timestampMs = sampleTimestampMs,
-                latitude = filteredPosition?.latitude,
-                longitude = filteredPosition?.longitude,
-                altitudeFromGpsM = if (useGpsData) location.let { if (it.hasAltitude()) it.altitude else null } else null,
-                altitudeFromBarometerM = altitudeFromBarometer,
-                speedFromGpsMps = if (useGpsData) location.let { if (it.hasSpeed()) it.speed.toDouble() else null } else null,
-                accuracyM = if (useGpsData) location.let { if (it.hasAccuracy()) it.accuracy else null } else null,
-                bearingDegrees = bearing,
-                satelliteCount = if (useGpsData) lastSatelliteCount else null,
-                pressureHpa = pressureHpa?.toDouble(),
-            ),
-        )
+        samplesFlow.tryEmit(sample)
     }
 
     override fun stop() {
@@ -383,9 +337,7 @@ class AndroidRideSensorDataSource(
         lastPressureHpa = null
         lastHeading = null
         headingSmoother.reset()
-        positionKalmanFilter.reset()
-        lastKalmanFedLocationTimeMs = 0L
-        lastKalmanResult = null
+        sampleAssembler.reset()
         magneticDeclinationDeg = 0f
         isOrientationSensorUnreliable = false
         lastSatelliteCount = null
