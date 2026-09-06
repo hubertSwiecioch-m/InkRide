@@ -63,9 +63,15 @@ internally, exposes `assemble(...)` and `reset()`.
 
 **Inputs** (all plain primitives/nullable value types — no `Location`/`Sensor` types):
 
-- `rawFix: RawGpsFix?` — small data class: `latitude`, `longitude`, `accuracyM`, `speedMps?`,
-  `bearingDeg?`, `altitudeM?`, `fixTimeMs`, `satelliteCount?`. Null when no fix has ever been
-  received, or the caller determines GPS data isn't usable (see below).
+- `rawFix: RawGpsFix?` — small data class, types matching `android.location.Location`'s own
+  getters exactly (so the caller does no conversion beyond null-checking `has*()`):
+  `latitude: Double`, `longitude: Double`, `accuracyM: Float`, `speedMps: Float?`,
+  `bearingDeg: Float?`, `altitudeM: Double?`, `fixTimeMs: Long`, `satelliteCount: Int?`. Null
+  when no fix has ever been received, or the caller determines GPS data isn't usable (see below).
+  `speedFromGpsMps` in the output `RideSensorSample` is `Double`, so the assembler converts
+  `speedMps` at the point of building the output — the `speedMps >= gpsBearingMinSpeedMps`
+  comparison in the bearing-source logic below happens on the original `Float`, matching what
+  `emitSample()` does today.
 - `pressureHpa: Double?`
 - `altitudeFromBarometerM: Double?` — pre-computed by the caller (via
   `SensorManager.getAltitude`, an Android static call) since the assembler stays framework-free.
@@ -84,6 +90,15 @@ internally, exposes `assemble(...)` and `reset()`.
   usable but already fed to the Kalman filter this cycle). The assembler owns only the dedup gate
   (by `fixTimeMs`); the caller (`AndroidRideSensorDataSource`) owns the freshness/accuracy gate
   before constructing `RawGpsFix`.
+
+  The dedup gate only ever *returns a cached filtered position* when `rawFix` is non-null and its
+  `fixTimeMs` matches the last-fed one — mirroring `emitSample()`'s `lastKalmanResult` reuse. When
+  `rawFix` is `null` (GPS currently unusable), the assembler does not feed the Kalman filter and
+  does not fall back to any previously cached result: the output's `latitude`/`longitude`/
+  `speedFromGpsMps` are `null` for that call, exactly as `emitSample()`'s
+  `filteredPosition = if (useGpsData) {...} else null` produces today. The cached
+  `lastKalmanResult` is preserved internally (not cleared) so it can still be reused the next time
+  the *same* fix is seen, but it is never surfaced through a null `rawFix`.
 - Bearing source: GPS course-over-ground when `rawFix != null && bearingDeg != null &&
   speedMps != null && speedMps >= gpsBearingMinSpeedMps`; otherwise `smoothedHeadingDeg`.
 - Bearing sanitization: drop non-finite values, normalize into `[0, 360)`.
@@ -122,13 +137,22 @@ Each case maps to a real branch in the current `emitSample()`:
 7. Bearing: `rawFix == null` (GPS stale/inaccurate) → falls back to `smoothedHeadingDeg`
    regardless of any stale speed value.
 8. Bearing: both GPS bearing and smoothed heading absent → `null`.
-9. Bearing: `smoothedHeadingDeg` is `NaN`/`Infinity` → dropped to `null`, not propagated.
-10. Bearing: raw value outside `[0, 360)` (e.g. `-10`, `370`) → normalized into range.
+9. Bearing: whichever source is selected is `NaN`/`Infinity` — both a non-finite
+   `smoothedHeadingDeg` (heading fallback active) and a non-finite `bearingDeg` on a fast, GPS-
+   selected `rawFix` — dropped to `null`, not propagated. Sanitization applies after source
+   selection, not per-source.
+10. Bearing: raw value outside `[0, 360)` (e.g. `-10`, `370`) → normalized into range, again for
+    both the GPS-selected and heading-selected cases.
 11. Sample timestamp equals `maxOf` the three per-sensor timestamps and the `now` fallback, for
     several orderings (GPS newest, pressure newest, heading newest, all equal).
 12. No fix ever received (`rawFix = null` from the start) → no crash, GPS-derived fields all null.
 13. `altitudeFromBarometerM` passthrough: assembler doesn't recompute it, just forwards the
     caller-supplied value unchanged (including `null`).
+14. A fix is fed (Kalman result cached), the *next* call passes `rawFix = null` (fix aged out or
+    turned inaccurate) → output `latitude`/`longitude`/`speedFromGpsMps` are `null` for that call,
+    even though a cached filtered position still exists internally; a subsequent call with the
+    *same* `fixTimeMs` as the originally-fed fix (GPS briefly flickered stale then reported the
+    same fix again) reuses that cache rather than re-feeding the filter.
 
 ## Robolectric smoke tests (`AndroidRideSensorDataSourceStartTest`, in `feature:tracking:data`)
 
@@ -136,11 +160,17 @@ Following `core:database`'s `MigrationTest` pattern (`@RunWith(RobolectricTestRu
 `ApplicationProvider.getApplicationContext()`):
 
 1. `start()` → `Result.Error(SensorError.Permission.LOCATION_DENIED)` when neither
-   `ACCESS_FINE_LOCATION` nor `ACCESS_COARSE_LOCATION` is granted.
+   `ACCESS_FINE_LOCATION` nor `ACCESS_COARSE_LOCATION` is granted — set up via
+   `Shadows.shadowOf(context).denyPermissions(Manifest.permission.ACCESS_FINE_LOCATION,
+   Manifest.permission.ACCESS_COARSE_LOCATION)` (confirmed public API on
+   `ShadowContextWrapper`, Robolectric 4.16.1).
 2. `start()` → `Result.Error(SensorError.Hardware.GPS_MISSING)` when the shadow
-   `LocationManager` reports no GPS provider.
-3. `start()` → `Result.Success` when permission is granted and the GPS provider exists; a second
-   call is idempotent (returns `Success` again without re-registering listeners).
+   `LocationManager` reports no GPS provider — set up via
+   `Shadows.shadowOf(locationManager).removeProvider(LocationManager.GPS_PROVIDER)` (confirmed
+   public API on `ShadowLocationManager`, Robolectric 4.16.1).
+3. `start()` → `Result.Success` when permission is granted (`grantPermissions(...)`, same shadow)
+   and the GPS provider exists (Robolectric's default `ShadowLocationManager` already registers
+   it); a second call is idempotent (returns `Success` again without re-registering listeners).
 
 Requires adding to `feature/tracking/data/build.gradle.kts`: `testImplementation(libs.junit)`,
 `testImplementation(libs.robolectric)`, `testImplementation(libs.androidx.test.core)`,
@@ -152,9 +182,6 @@ Requires adding to `feature/tracking/data/build.gradle.kts`: `testImplementation
   instrumented ride-tracking E2E suite exercises end-to-end. After refactoring, that suite must
   still pass unmodified — it's the regression backstop for this phase, not something this phase
   adds to.
-- Robolectric's exact `ShadowLocationManager` API for "no GPS provider" needs confirming during
-  implementation (may already be the default un-configured state) — an implementation detail, not
-  a design blocker.
 
 ## Testing plan
 
