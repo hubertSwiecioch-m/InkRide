@@ -2,7 +2,8 @@ package com.speedevand.inkride.tracking
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isNotEqualTo
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isLessThanOrEqualTo
 import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.tracking.support.RideSamples
 import com.speedevand.inkride.tracking.support.swipeMetricsPagerToNextPage
@@ -36,11 +37,16 @@ class RideTrackingGpsQualityTest : RideTrackingE2ETestBase() {
         val distanceBeforeDropout = composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE).toDouble()
 
         composeTestRule.swipeMetricsPagerToNextPage()
-        val altitudeBeforeDropout = composeTestRule.textOf(DashboardTestTags.METRIC_ALTITUDE)
+        val altitudeBeforeDropout = composeTestRule.textOf(DashboardTestTags.METRIC_ALTITUDE).toDouble()
 
         // Full GPS dropout: only the barometer keeps reporting. Altitude
-        // must keep updating; distance (GPS-derived) must not move at all
-        // since no lat/lon fix arrives.
+        // must move toward the new barometer reading; distance (GPS-derived)
+        // must not move at all since no lat/lon fix arrives. The displayed
+        // altitude is a GPS/barometer complementary filter, not a raw
+        // passthrough (confirmed empirically: injecting 130.0 here after a
+        // run of 100.0 readings produced 115, not 130), so this checks the
+        // fusion converged *toward* the injected value rather than an exact
+        // figure that depends on the filter's own time constant.
         fakeSensorSource.emit(
             RideSamples.movingSample(
                 stepIndex = 10,
@@ -51,7 +57,9 @@ class RideTrackingGpsQualityTest : RideTrackingE2ETestBase() {
         )
         Thread.sleep(1_000L)
 
-        assertThat(composeTestRule.textOf(DashboardTestTags.METRIC_ALTITUDE)).isNotEqualTo(altitudeBeforeDropout)
+        val altitudeAfterDropout = composeTestRule.textOf(DashboardTestTags.METRIC_ALTITUDE).toDouble()
+        assertThat(altitudeAfterDropout).isGreaterThan(altitudeBeforeDropout)
+        assertThat(altitudeAfterDropout).isLessThanOrEqualTo(130.0)
 
         composeTestRule.swipeMetricsPagerToPreviousPage()
         assertThat(composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE).toDouble())

@@ -3,7 +3,8 @@ package com.speedevand.inkride.tracking
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import assertk.assertThat
-import assertk.assertions.contains
+import assertk.assertions.isGreaterThan
+import assertk.assertions.isLessThan
 import assertk.assertions.startsWith
 import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.dashboard.presentation.R
@@ -27,6 +28,19 @@ class RideTrackingLapRecordingTest : RideTrackingE2ETestBase() {
         composeTestRule.waitUntilTagText(DashboardTestTags.LAST_LAP_STATUS) { it.startsWith(lastLapPrefix) }
         val lapText = composeTestRule.textOf(DashboardTestTags.LAST_LAP_STATUS)
         assertThat(lapText).startsWith(lastLapPrefix)
-        assertThat(lapText).contains("km")
+
+        // The lap distance is formatted as "<n.nn> km" (RideExtrasUi.kt's
+        // LapRecord.toSummaryUi, 2 decimals). Extract the actual number and
+        // check it's a real, plausible value for ~10s at 20 km/h -- not just
+        // that the word "km" is present somewhere in the string.
+        val distanceKm =
+            Regex("""(\d+\.\d+) km""")
+                .find(lapText)
+                ?.groupValues
+                ?.get(1)
+                ?.toDouble()
+                ?: error("Lap status text did not contain a \"<number> km\" distance: $lapText")
+        assertThat(distanceKm).isGreaterThan(0.03)
+        assertThat(distanceKm).isLessThan(0.07)
     }
 }
