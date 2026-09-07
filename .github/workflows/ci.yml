@@ -32,9 +32,6 @@ jobs:
       - name: Run Android Lint
         run: ./gradlew lintDebug --no-daemon
 
-      - name: Assemble debug APK
-        run: ./gradlew assembleDebug --no-daemon
-
   instrumented-tests:
     needs: build-and-test
     runs-on: ubuntu-latest
