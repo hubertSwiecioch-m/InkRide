@@ -73,6 +73,9 @@ object RideSimulationBuilder {
             val phaseStartAltitudeM = altitudeM
             val phaseStartSampleIndex = samples.size
 
+            require(phase.durationMs % phase.sampleIntervalMs == 0L) {
+                "Phase \"${phase.name}\": durationMs (${phase.durationMs}) must be an exact multiple of sampleIntervalMs (${phase.sampleIntervalMs})"
+            }
             val stepCount = (phase.durationMs / phase.sampleIntervalMs).toInt().coerceAtLeast(1)
             val speedMps = phase.speedKmh / 3.6
             val stepDistanceM = if (phase.terrain == SimTerrain.STOP) 0.0 else speedMps * (phase.sampleIntervalMs / 1000.0)

@@ -7,15 +7,14 @@ import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isGreaterThanOrEqualTo
 import assertk.assertions.isLessThan
-import assertk.assertions.isNotNull
 import assertk.assertions.isTrue
 import com.speedevand.inkride.core.domain.settings.BikeType
 import com.speedevand.inkride.core.domain.settings.UserSettings
+import org.junit.jupiter.api.Test
 import kotlin.math.atan
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
-import org.junit.jupiter.api.Test
 
 /**
  * Drives [RideMetricsCalculator] through one continuous ~25.6 km ride made
@@ -39,8 +38,24 @@ class RideMetricsCalculatorFullRideSimulationTest {
         assertInvariantsHoldThroughout(metricsBySampleIndex, ride)
 
         fun phase(name: String) = ride.phases.first { it.name == name }
+
         fun metricsAt(name: String) = metricsBySampleIndex[phase(name).endSampleIndex]
-        fun metricsBefore(name: String) = metricsBySampleIndex[phase(name).startSampleIndex - 1]
+
+        fun metricsBefore(name: String): RideMetrics {
+            val index = phase(name).startSampleIndex - 1
+            require(index >= 0) { "metricsBefore(\"$name\") has no prior sample — it is the ride's first phase" }
+            return metricsBySampleIndex[index]
+        }
+
+        // Per-phase calorie burn rate (kcal/second), used to test actual
+        // MET-bracket ordering across phases — unlike caloriesKcal itself
+        // (a cumulative, non-decreasing counter across the whole ride), this
+        // isolates each phase's own rate so ordering checks aren't vacuously
+        // satisfied by monotonicity alone.
+        fun phaseKcalPerSecond(name: String): Double {
+            val elapsedSeconds = (metricsAt(name).elapsedTimeSeconds - metricsBefore(name).elapsedTimeSeconds).toDouble()
+            return (metricsAt(name).caloriesKcal - metricsBefore(name).caloriesKcal) / elapsedSeconds
+        }
 
         // GPS cold-start warm-up: the first 3 reliable fixes (this ride's very
         // first samples) must not accumulate distance; the streak completes on
@@ -58,21 +73,32 @@ class RideMetricsCalculatorFullRideSimulationTest {
 
         val cruise25DistanceM = (metricsAt("cruise-25").distanceKm - metricsBefore("cruise-25").distanceKm) * 1000.0
         assertThat(cruise25DistanceM).isCloseTo(phase("cruise-25").distanceM, phase("cruise-25").distanceM * 0.02)
-        assertThat(metricsAt("cruise-25").caloriesKcal).isGreaterThan(metricsAt("cruise-15").caloriesKcal)
         assertThat(metricsAt("cruise-25").averagePowerWatts).isGreaterThan(metricsAt("cruise-15").averagePowerWatts)
+        assertThat(phaseKcalPerSecond("cruise-25")).isGreaterThan(phaseKcalPerSecond("cruise-15"))
 
         // Phase: sustained climb — positive grade, elevation gain tracks climbed height, power/calories rise.
         val climbMetrics = metricsAt("climb")
         assertThat(climbMetrics.gradePercent).isGreaterThan(0.0)
+        assertThat(climbMetrics.gradePercent).isCloseTo(6.0, 1.0)
         val climbElevationGainM = climbMetrics.elevationGainM - metricsBefore("climb").elevationGainM
         assertThat(climbElevationGainM).isCloseTo(phase("climb").altitudeChangeM, phase("climb").altitudeChangeM * 0.10)
+        // Compared via the instantaneous powerWatts, not averagePowerWatts: the
+        // latter is a whole-ride, time-weighted cumulative average diluted by
+        // the warm-up and both cruise phases that ran before the climb, so
+        // comparing it against an instantaneous steady-state reference is a
+        // category error (the same one already fixed for the sprint-vs-climb
+        // power check below). Instantaneous-vs-instantaneous tracks much
+        // closer, so the tolerance is tightened accordingly (verified ~0.995
+        // ratio empirically — see fix report).
         val climbReferenceWatts = referencePowerWatts(speedKmh = 12.0, gradePercent = 6.0)
-        assertThat(climbMetrics.averagePowerWatts.toDouble()).isGreaterThan(climbReferenceWatts * 0.4)
-        assertThat(climbMetrics.averagePowerWatts.toDouble()).isLessThan(climbReferenceWatts * 1.6)
+        assertThat(climbMetrics.powerWatts.toDouble()).isGreaterThan(climbReferenceWatts * 0.7)
+        assertThat(climbMetrics.powerWatts.toDouble()).isLessThan(climbReferenceWatts * 1.3)
+        assertThat(phaseKcalPerSecond("climb")).isGreaterThan(phaseKcalPerSecond("cruise-15"))
 
         // Phase: sustained descent — negative grade, no new elevation gain, power lower than the climb.
         val descentMetrics = metricsAt("descent")
         assertThat(descentMetrics.gradePercent).isLessThan(0.0)
+        assertThat(descentMetrics.gradePercent).isCloseTo(-6.0, 1.0)
         assertThat(descentMetrics.elevationGainM).isCloseTo(climbMetrics.elevationGainM, 1.0)
         assertThat(descentMetrics.averagePowerWatts).isLessThan(climbMetrics.averagePowerWatts)
 
@@ -80,17 +106,27 @@ class RideMetricsCalculatorFullRideSimulationTest {
         val rolling1 = metricsAt("rolling-1")
         val rolling2 = metricsAt("rolling-2")
         val rolling3 = metricsAt("rolling-3")
+        val rolling4 = metricsAt("rolling-4")
         assertThat(rolling1.elevationGainM).isGreaterThan(descentMetrics.elevationGainM)
         assertThat(rolling2.elevationGainM).isCloseTo(rolling1.elevationGainM, 1.0)
         assertThat(rolling3.elevationGainM).isGreaterThan(rolling2.elevationGainM)
+        assertThat(rolling4.elevationGainM).isCloseTo(rolling3.elevationGainM, 1.0)
 
         // Phase: stop-and-go — distance frozen during a stop, resumes and grows on the next cruise leg.
         val distanceBeforeStop1 = metricsBefore("stopgo-stop-1").distanceKm
         val distanceAfterStop1 = metricsAt("stopgo-stop-1").distanceKm
         assertThat(distanceAfterStop1).isEqualTo(distanceBeforeStop1)
+        // Moving time must stay frozen during the stop while elapsed time keeps advancing.
+        assertThat(metricsAt("stopgo-stop-1").movingTimeSeconds).isEqualTo(metricsBefore("stopgo-stop-1").movingTimeSeconds)
+        assertThat(metricsAt("stopgo-stop-1").elapsedTimeSeconds).isGreaterThan(metricsBefore("stopgo-stop-1").elapsedTimeSeconds)
         val distanceAfterCruise2 = metricsAt("stopgo-cruise-2").distanceKm
         assertThat(distanceAfterCruise2).isGreaterThan(distanceAfterStop1 + 0.3)
         assertThat(metricsAt("stopgo-cruise-2").movingTimeSeconds).isGreaterThan(metricsAt("stopgo-stop-1").movingTimeSeconds)
+        // Stop-and-go lockstep: resuming from a stop must not deflate the moving
+        // average either (RideMetricsCalculator.kt's documented fix: distance/
+        // time pairing during the stationary-drift confirmation window).
+        assertThat(metricsAt("stopgo-cruise-2").averageSpeedKmh)
+            .isCloseTo(metricsBefore("stopgo-stop-1").averageSpeedKmh, metricsBefore("stopgo-stop-1").averageSpeedKmh * 0.05)
 
         // Phase: sprint — new ride max speed, highest power of the ride. Compared
         // via the instantaneous powerWatts, not averagePowerWatts: the latter is
@@ -107,6 +143,7 @@ class RideMetricsCalculatorFullRideSimulationTest {
         assertThat(sprintMetrics.maxSpeedKmh).isGreaterThan(maxSpeedBeforeSprint)
         assertThat(sprintMetrics.maxSpeedKmh).isCloseTo(42.0, 2.0)
         assertThat(sprintMetrics.powerWatts).isGreaterThan(climbMetrics.powerWatts)
+        assertThat(phaseKcalPerSecond("sprint")).isGreaterThan(phaseKcalPerSecond("climb"))
 
         // Phase: GPS dropout ("tunnel") — no location fix arrives for ~22s, only
         // barometer samples. Altitude keeps updating through the gap. Distance
@@ -114,17 +151,35 @@ class RideMetricsCalculatorFullRideSimulationTest {
         // is checked across the tunnel PLUS "post-tunnel-resume" span (the first
         // phase with a real fix again), not at the tunnel's own last sample.
         val tunnelStart = metricsBefore("tunnel")
-        assertThat(metricsAt("tunnel").altitudeM).isNotNull()
+        val tunnelAltitudeChangeM = metricsAt("tunnel").altitudeM!! - tunnelStart.altitudeM!!
+        assertThat(tunnelAltitudeChangeM).isCloseTo(phase("tunnel").altitudeChangeM, phase("tunnel").altitudeChangeM * 0.10)
         val resumeMetrics = metricsAt("post-tunnel-resume")
         val tunnelSpanDistanceM = (resumeMetrics.distanceKm - tunnelStart.distanceKm) * 1000.0
         val tunnelSpanGroundTruthM = phase("tunnel").distanceM + phase("post-tunnel-resume").distanceM
         assertThat(tunnelSpanDistanceM).isCloseTo(tunnelSpanGroundTruthM, tunnelSpanGroundTruthM * 0.05)
+        // GPS-dropout consistency: the tunnel/resume span must not inflate the
+        // moving average (RideMetricsCalculator.kt's documented fix: distance/
+        // moving-time use the same interval, rather than capping only the time
+        // while crediting the full distance).
+        assertThat(resumeMetrics.averageSpeedKmh).isCloseTo(tunnelStart.averageSpeedKmh, tunnelStart.averageSpeedKmh * 0.05)
         // Energy for the resuming fix is capped to 10s (maxIntegrationGapMs)
         // instead of the full ~23s gap since the last real fix, so total calories
         // across the span stay well under what a naive model crediting the full
-        // elapsed time (~32s) as continuous riding would produce.
+        // elapsed time (~32s) as continuous riding would produce. The tunnel is
+        // now a climb (see the terrain fix above, needed to give the altitude
+        // assertion something real to observe), so the naive reference must
+        // account for the same grade — otherwise this would be comparing a
+        // graded actual against a flat-ground naive figure, which is not what
+        // this assertion is testing (the integration-gap cap, not grade).
         val tunnelSpanCaloriesKcal = resumeMetrics.caloriesKcal - tunnelStart.caloriesKcal
-        val naiveFullSpanKcal = CaloriesEstimator().estimateKcal(speedKmh = 20.0, intervalMs = 32_000L, userSettings = settings)
+        val tunnelGradePercent = phase("tunnel").altitudeChangeM / phase("tunnel").distanceM * 100.0
+        val naiveFullSpanKcal =
+            CaloriesEstimator().estimateKcal(
+                speedKmh = 20.0,
+                intervalMs = 32_000L,
+                userSettings = settings,
+                gradePercent = tunnelGradePercent,
+            )
         assertThat(tunnelSpanCaloriesKcal).isGreaterThan(0.0)
         assertThat(tunnelSpanCaloriesKcal).isLessThan(naiveFullSpanKcal * 0.8)
 
@@ -204,26 +259,39 @@ class RideMetricsCalculatorFullRideSimulationTest {
         val maxBounceDipKm = 0.034 // configured bounce jumpMeters (33m) + floating-point slack
 
         var previous: RideMetrics? = null
+        var bounceDipConsumed = false
         metrics.forEachIndexed { index, current ->
-            assertThat(current.distanceKm.isFinite()).isTrue()
-            assertThat(current.distanceKm < 0.0).isFalse()
-            assertThat(current.caloriesKcal.isFinite()).isTrue()
-            assertThat(current.caloriesKcal < 0.0).isFalse()
-            assertThat(current.elevationGainM.isFinite()).isTrue()
-            assertThat(current.elevationGainM < 0.0).isFalse()
-            assertThat(current.powerWatts).isGreaterThanOrEqualTo(0)
-            assertThat(current.averagePowerWatts).isGreaterThanOrEqualTo(0)
+            assertThat(current.distanceKm.isFinite(), name = "sample $index distanceKm finite").isTrue()
+            assertThat(current.distanceKm < 0.0, name = "sample $index distanceKm negative").isFalse()
+            assertThat(current.caloriesKcal.isFinite(), name = "sample $index caloriesKcal finite").isTrue()
+            assertThat(current.caloriesKcal < 0.0, name = "sample $index caloriesKcal negative").isFalse()
+            assertThat(current.elevationGainM.isFinite(), name = "sample $index elevationGainM finite").isTrue()
+            assertThat(current.elevationGainM < 0.0, name = "sample $index elevationGainM negative").isFalse()
+            assertThat(current.powerWatts, name = "sample $index powerWatts").isGreaterThanOrEqualTo(0)
+            assertThat(current.averagePowerWatts, name = "sample $index averagePowerWatts").isGreaterThanOrEqualTo(0)
 
             previous?.let { prior ->
-                if (index in bounceSampleRange) {
-                    assertThat(current.distanceKm).isGreaterThanOrEqualTo(prior.distanceKm - maxBounceDipKm)
+                // The "bounce" phase deliberately triggers RideMetricsCalculator's
+                // GPS bounce-reversal mechanism (see the class doc above), which
+                // is a single, intentional, bounded backward correction. The
+                // relaxed bound is consumed by the first actual decrease only —
+                // every other sample in (and out of) the phase's range still
+                // gets the strict non-decreasing check.
+                val inBouncePhase = index in bounceSampleRange
+                if (inBouncePhase && !bounceDipConsumed && current.distanceKm < prior.distanceKm) {
+                    assertThat(current.distanceKm, name = "sample $index distanceKm (bounce dip)")
+                        .isGreaterThanOrEqualTo(prior.distanceKm - maxBounceDipKm)
+                    bounceDipConsumed = true
                 } else {
-                    assertThat(current.distanceKm).isGreaterThanOrEqualTo(prior.distanceKm)
+                    assertThat(current.distanceKm, name = "sample $index distanceKm").isGreaterThanOrEqualTo(prior.distanceKm)
                 }
-                assertThat(current.elapsedTimeSeconds).isGreaterThanOrEqualTo(prior.elapsedTimeSeconds)
-                assertThat(current.movingTimeSeconds).isGreaterThanOrEqualTo(prior.movingTimeSeconds)
-                assertThat(current.elevationGainM).isGreaterThanOrEqualTo(prior.elevationGainM)
-                assertThat(current.caloriesKcal).isGreaterThanOrEqualTo(prior.caloriesKcal)
+                assertThat(current.elapsedTimeSeconds, name = "sample $index elapsedTimeSeconds")
+                    .isGreaterThanOrEqualTo(prior.elapsedTimeSeconds)
+                assertThat(current.movingTimeSeconds, name = "sample $index movingTimeSeconds")
+                    .isGreaterThanOrEqualTo(prior.movingTimeSeconds)
+                assertThat(current.elevationGainM, name = "sample $index elevationGainM")
+                    .isGreaterThanOrEqualTo(prior.elevationGainM)
+                assertThat(current.caloriesKcal, name = "sample $index caloriesKcal").isGreaterThanOrEqualTo(prior.caloriesKcal)
             }
             previous = current
         }
@@ -248,7 +316,14 @@ class RideMetricsCalculatorFullRideSimulationTest {
                 SimPhase(name = "stopgo-cruise-3", terrain = SimTerrain.FLAT, speedKmh = 15.0, durationMs = 160_000L),
                 SimPhase(name = "stopgo-stop-3", terrain = SimTerrain.STOP, durationMs = 8_000L),
                 SimPhase(name = "sprint", terrain = SimTerrain.FLAT, speedKmh = 42.0, durationMs = 90_000L),
-                SimPhase(name = "tunnel", terrain = SimTerrain.FLAT, speedKmh = 20.0, durationMs = 22_000L, gpsDropout = true),
+                SimPhase(
+                    name = "tunnel",
+                    terrain = SimTerrain.CLIMB,
+                    gradePercent = 4.0,
+                    speedKmh = 20.0,
+                    durationMs = 22_000L,
+                    gpsDropout = true,
+                ),
                 SimPhase(name = "post-tunnel-resume", terrain = SimTerrain.FLAT, speedKmh = 20.0, durationMs = 10_000L),
                 SimPhase(
                     name = "urban-canyon",
