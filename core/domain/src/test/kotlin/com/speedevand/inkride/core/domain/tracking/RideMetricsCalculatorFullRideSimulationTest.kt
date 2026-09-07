@@ -146,13 +146,18 @@ class RideMetricsCalculatorFullRideSimulationTest {
         assertThat(phaseKcalPerSecond("sprint")).isGreaterThan(phaseKcalPerSecond("climb"))
 
         // Phase: GPS dropout ("tunnel") — no location fix arrives for ~22s, only
-        // barometer samples. Altitude keeps updating through the gap. Distance
-        // and calories are only credited once a real fix arrives again, so this
-        // is checked across the tunnel PLUS "post-tunnel-resume" span (the first
-        // phase with a real fix again), not at the tunnel's own last sample.
+        // barometer samples. Distance and calories are only credited once a real
+        // fix arrives again, so this is checked across the tunnel PLUS
+        // "post-tunnel-resume" span (the first phase with a real fix again), not
+        // at the tunnel's own last sample. This phase stays flat deliberately:
+        // CaloriesEstimator's gradeFactor clamps hard even at a modest grade (a
+        // production quirk in its kcal/min-to-watts conversion constant, out of
+        // scope here), which would make a grade-aware naive reference for the
+        // calorie-cap check below scale non-proportionally to the real capped
+        // computation and lose its ability to catch a broken cap. The separate
+        // "tunnel-climb" dropout phase below covers the altitude-keeps-updating
+        // claim instead, where the naive-reference comparison doesn't apply.
         val tunnelStart = metricsBefore("tunnel")
-        val tunnelAltitudeChangeM = metricsAt("tunnel").altitudeM!! - tunnelStart.altitudeM!!
-        assertThat(tunnelAltitudeChangeM).isCloseTo(phase("tunnel").altitudeChangeM, phase("tunnel").altitudeChangeM * 0.10)
         val resumeMetrics = metricsAt("post-tunnel-resume")
         val tunnelSpanDistanceM = (resumeMetrics.distanceKm - tunnelStart.distanceKm) * 1000.0
         val tunnelSpanGroundTruthM = phase("tunnel").distanceM + phase("post-tunnel-resume").distanceM
@@ -165,23 +170,21 @@ class RideMetricsCalculatorFullRideSimulationTest {
         // Energy for the resuming fix is capped to 10s (maxIntegrationGapMs)
         // instead of the full ~23s gap since the last real fix, so total calories
         // across the span stay well under what a naive model crediting the full
-        // elapsed time (~32s) as continuous riding would produce. The tunnel is
-        // now a climb (see the terrain fix above, needed to give the altitude
-        // assertion something real to observe), so the naive reference must
-        // account for the same grade — otherwise this would be comparing a
-        // graded actual against a flat-ground naive figure, which is not what
-        // this assertion is testing (the integration-gap cap, not grade).
+        // elapsed time (~32s) as continuous flat riding would produce.
         val tunnelSpanCaloriesKcal = resumeMetrics.caloriesKcal - tunnelStart.caloriesKcal
-        val tunnelGradePercent = phase("tunnel").altitudeChangeM / phase("tunnel").distanceM * 100.0
-        val naiveFullSpanKcal =
-            CaloriesEstimator().estimateKcal(
-                speedKmh = 20.0,
-                intervalMs = 32_000L,
-                userSettings = settings,
-                gradePercent = tunnelGradePercent,
-            )
+        val naiveFullSpanKcal = CaloriesEstimator().estimateKcal(speedKmh = 20.0, intervalMs = 32_000L, userSettings = settings)
         assertThat(tunnelSpanCaloriesKcal).isGreaterThan(0.0)
         assertThat(tunnelSpanCaloriesKcal).isLessThan(naiveFullSpanKcal * 0.8)
+
+        // Phase: a second, dedicated GPS-dropout phase ("tunnel-climb") verifies
+        // altitude keeps updating from barometer-only samples through a gap even
+        // when there IS a real grade to observe — kept separate from the "tunnel"
+        // phase above so this phase's grade can't interact with that phase's
+        // calorie-cap naive reference (see the comment there).
+        val tunnelClimbStart = metricsBefore("tunnel-climb")
+        val tunnelClimbAltitudeChangeM = metricsAt("tunnel-climb").altitudeM!! - tunnelClimbStart.altitudeM!!
+        assertThat(tunnelClimbAltitudeChangeM)
+            .isCloseTo(phase("tunnel-climb").altitudeChangeM, phase("tunnel-climb").altitudeChangeM * 0.10)
 
         // Phase: poor accuracy / urban canyon — every fix's ~5.6 m/s-equivalent
         // displacement stays below the combinedAccuracy(30m)×0.5 = 15m
@@ -316,15 +319,17 @@ class RideMetricsCalculatorFullRideSimulationTest {
                 SimPhase(name = "stopgo-cruise-3", terrain = SimTerrain.FLAT, speedKmh = 15.0, durationMs = 160_000L),
                 SimPhase(name = "stopgo-stop-3", terrain = SimTerrain.STOP, durationMs = 8_000L),
                 SimPhase(name = "sprint", terrain = SimTerrain.FLAT, speedKmh = 42.0, durationMs = 90_000L),
+                SimPhase(name = "tunnel", terrain = SimTerrain.FLAT, speedKmh = 20.0, durationMs = 22_000L, gpsDropout = true),
+                SimPhase(name = "post-tunnel-resume", terrain = SimTerrain.FLAT, speedKmh = 20.0, durationMs = 10_000L),
                 SimPhase(
-                    name = "tunnel",
+                    name = "tunnel-climb",
                     terrain = SimTerrain.CLIMB,
                     gradePercent = 4.0,
                     speedKmh = 20.0,
-                    durationMs = 22_000L,
+                    durationMs = 10_000L,
                     gpsDropout = true,
                 ),
-                SimPhase(name = "post-tunnel-resume", terrain = SimTerrain.FLAT, speedKmh = 20.0, durationMs = 10_000L),
+                SimPhase(name = "post-climb-resume", terrain = SimTerrain.FLAT, speedKmh = 20.0, durationMs = 10_000L),
                 SimPhase(
                     name = "urban-canyon",
                     terrain = SimTerrain.FLAT,
