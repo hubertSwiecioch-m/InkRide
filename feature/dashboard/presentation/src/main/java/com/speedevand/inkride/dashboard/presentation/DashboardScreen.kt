@@ -43,6 +43,7 @@ import com.speedevand.inkride.dashboard.presentation.components.LapGoalStatus
 import com.speedevand.inkride.dashboard.presentation.components.MetricsPager
 import com.speedevand.inkride.dashboard.presentation.components.RouteStatus
 import com.speedevand.inkride.dashboard.presentation.components.VerticalPagerIndicator
+import com.speedevand.inkride.dashboard.presentation.components.visibleDashboardPages
 import com.speedevand.inkride.dashboard.presentation.isActiveRide
 import com.speedevand.inkride.dashboard.presentation.model.RideMetricsUi
 import org.koin.androidx.compose.koinViewModel
@@ -175,18 +176,7 @@ fun DashboardScreen(
         ) { uri -> uri?.let { onAction(DashboardAction.OnRouteSelected(it)) } }
 
     val pagerState =
-        rememberPagerState(pageCount = {
-            var count = 1
-            val hasSecondary =
-                state.userSettings.showMaxSpeed ||
-                    state.userSettings.showElevationGain ||
-                    state.userSettings.showCalories ||
-                    state.userSettings.showAltitude ||
-                    state.userSettings.showPower
-            if (hasSecondary) count++
-            if (state.userSettings.showCompass) count++
-            count
-        })
+        rememberPagerState(pageCount = { visibleDashboardPages(state.userSettings).size })
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),

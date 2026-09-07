@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import com.mudita.mmd.components.text.TextMMD
 import com.speedevand.inkride.core.presentation.DesignConstants
 
@@ -31,6 +32,7 @@ fun MetricItem(
     value: String,
     unit: String,
     modifier: Modifier = Modifier,
+    valueTestTag: String? = null,
 ) {
     Column(
         modifier = modifier,
@@ -49,6 +51,7 @@ fun MetricItem(
             TextMMD(
                 text = value,
                 style = DashboardTextStyles.metricValue,
+                modifier = if (valueTestTag != null) Modifier.testTag(valueTestTag) else Modifier,
             )
             if (unit.isNotEmpty()) {
                 Spacer(modifier = Modifier.width(DesignConstants.PADDING_TINY / 2))

@@ -12,9 +12,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.mudita.mmd.components.top_app_bar.TopAppBarMMD
 import com.speedevand.inkride.core.presentation.DesignConstants
+import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.dashboard.presentation.R
 import com.speedevand.inkride.dashboard.presentation.TrackingStatus
 import com.speedevand.inkride.dashboard.presentation.isActiveRide
@@ -48,13 +50,13 @@ fun DashboardTopBar(
         },
         actions = {
             if (isActiveRide) {
-                IconButton(onClick = onRecordLap) {
+                IconButton(onClick = onRecordLap, modifier = Modifier.testTag(DashboardTestTags.RECORD_LAP_BUTTON)) {
                     Icon(
                         imageVector = Icons.Filled.Timer,
                         contentDescription = stringResource(R.string.dashboard_action_lap),
                     )
                 }
-                IconButton(onClick = onOpenGoal) {
+                IconButton(onClick = onOpenGoal, modifier = Modifier.testTag(DashboardTestTags.GOAL_BUTTON)) {
                     Icon(
                         imageVector = Icons.Filled.Flag,
                         contentDescription = stringResource(R.string.dashboard_action_goal),

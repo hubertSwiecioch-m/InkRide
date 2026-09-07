@@ -7,9 +7,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.mudita.mmd.components.text.TextMMD
 import com.speedevand.inkride.core.domain.tracking.WeatherTrend
+import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.dashboard.presentation.R
 import com.speedevand.inkride.dashboard.presentation.model.RideMetricsUi
 
@@ -34,6 +36,7 @@ fun InfoBar(
                 ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.testTag(DashboardTestTags.GPS_QUALITY),
         )
         metrics.heartRateBpm?.let { bpm ->
             val heartRateText =
@@ -44,6 +47,7 @@ fun InfoBar(
                 text = heartRateText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.testTag(DashboardTestTags.HEART_RATE_VALUE),
             )
         }
         metrics.cadenceRpm?.let {
@@ -51,6 +55,7 @@ fun InfoBar(
                 text = stringResource(R.string.dashboard_cadence, it),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.testTag(DashboardTestTags.CADENCE_VALUE),
             )
         }
         if (sensorPaired && !sensorConnected) {
@@ -58,6 +63,7 @@ fun InfoBar(
                 text = stringResource(R.string.dashboard_sensor_disconnected),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.testTag(DashboardTestTags.SENSOR_DISCONNECTED),
             )
         }
         metrics.weatherTrend.labelRes()?.let { labelRes ->

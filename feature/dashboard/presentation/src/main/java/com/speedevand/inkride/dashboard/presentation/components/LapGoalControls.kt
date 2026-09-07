@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,6 +33,7 @@ import com.speedevand.inkride.core.presentation.DesignConstants
 import com.speedevand.inkride.dashboard.presentation.DashboardAction
 import com.speedevand.inkride.dashboard.presentation.DashboardConstants.KM_TO_MI_FACTOR
 import com.speedevand.inkride.dashboard.presentation.DashboardState
+import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
 import com.speedevand.inkride.dashboard.presentation.R
 import com.speedevand.inkride.dashboard.presentation.isActiveRide
 
@@ -64,6 +66,7 @@ fun LapGoalStatus(
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.testTag(DashboardTestTags.GOAL_STATUS),
             )
         }
 
@@ -78,6 +81,7 @@ fun LapGoalStatus(
                     ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.testTag(DashboardTestTags.LAST_LAP_STATUS),
             )
         }
     }
@@ -138,7 +142,7 @@ fun GoalBottomSheet(
                         keyboardType = if (isDistance) KeyboardType.Decimal else KeyboardType.Number,
                     ),
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(DashboardTestTags.GOAL_VALUE_FIELD),
             )
 
             Row(
@@ -155,7 +159,7 @@ fun GoalBottomSheet(
                     TextMMD(text = stringResource(R.string.dashboard_goal_clear))
                 }
                 ButtonMMD(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).testTag(DashboardTestTags.GOAL_SET_BUTTON),
                     onClick = {
                         buildGoal(isDistance, value, imperial)?.let { onAction(DashboardAction.OnSetGoal(it)) }
                         onDismiss()
