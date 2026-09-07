@@ -6,8 +6,8 @@ import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThan
 import assertk.assertions.isTrue
-import kotlin.math.cos
 import org.junit.jupiter.api.Test
+import kotlin.math.cos
 
 class PositionKalmanFilterTest {
     @Test

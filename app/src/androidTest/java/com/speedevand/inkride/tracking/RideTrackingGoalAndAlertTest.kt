@@ -24,8 +24,7 @@ import org.junit.Test
 import org.koin.core.context.GlobalContext
 
 class RideTrackingGoalAndAlertTest : RideTrackingE2ETestBase() {
-    override fun seedSettings(): UserSettings =
-        super.seedSettings().copy(alerts = AlertConfig(maxSpeedKmh = 15.0))
+    override fun seedSettings(): UserSettings = super.seedSettings().copy(alerts = AlertConfig(maxSpeedKmh = 15.0))
 
     @Test
     fun settingADistanceGoalShowsProgressThenReached() {
@@ -54,7 +53,11 @@ class RideTrackingGoalAndAlertTest : RideTrackingE2ETestBase() {
         val collectorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val collectorJob =
             collectorScope.launch {
-                GlobalContext.get().get<RideTracker>().alerts.collect { alerts.add(it) }
+                GlobalContext
+                    .get()
+                    .get<RideTracker>()
+                    .alerts
+                    .collect { alerts.add(it) }
             }
 
         // 20 km/h steadily exceeds the 15 km/h threshold seeded above; the

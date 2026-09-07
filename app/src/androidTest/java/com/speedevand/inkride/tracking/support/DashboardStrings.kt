@@ -9,5 +9,6 @@ import androidx.test.platform.app.InstrumentationRegistry
  * the UI renders instead of a hardcoded English literal that would silently
  * drift from `strings.xml`.
  */
-fun dashboardString(@StringRes resId: Int): String =
-    InstrumentationRegistry.getInstrumentation().targetContext.getString(resId)
+fun dashboardString(
+    @StringRes resId: Int,
+): String = InstrumentationRegistry.getInstrumentation().targetContext.getString(resId)

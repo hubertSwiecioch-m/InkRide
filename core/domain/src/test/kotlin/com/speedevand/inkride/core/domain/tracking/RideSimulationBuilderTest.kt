@@ -7,8 +7,8 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThan
 import assertk.assertions.isNull
-import kotlin.math.PI
 import org.junit.jupiter.api.Test
+import kotlin.math.PI
 
 class RideSimulationBuilderTest {
     @Test
@@ -42,7 +42,9 @@ class RideSimulationBuilderTest {
     fun `descent phase produces negative altitude change`() {
         val ride =
             RideSimulationBuilder.build(
-                listOf(SimPhase(name = "descent", terrain = SimTerrain.DESCENT, speedKmh = 30.0, gradePercent = -6.0, durationMs = 10_000L)),
+                listOf(
+                    SimPhase(name = "descent", terrain = SimTerrain.DESCENT, speedKmh = 30.0, gradePercent = -6.0, durationMs = 10_000L),
+                ),
             )
         assertThat(ride.phases.single().altitudeChangeM).isLessThan(0.0)
     }

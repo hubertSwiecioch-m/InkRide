@@ -8,12 +8,12 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import com.speedevand.inkride.core.domain.Result
 import com.speedevand.inkride.core.domain.tracking.PlannedRoute
-import java.io.ByteArrayInputStream
-import java.io.FileNotFoundException
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import java.io.ByteArrayInputStream
+import java.io.FileNotFoundException
 
 class AndroidGpxRouteLoaderTest {
     private val context = mock<Context>()

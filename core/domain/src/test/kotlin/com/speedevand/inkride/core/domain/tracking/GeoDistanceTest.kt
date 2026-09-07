@@ -48,7 +48,12 @@ class GeoDistanceTest {
 
     @Test
     fun `never returns NaN for near-antipodal points, exercising the sqrt(a) clamp`() {
-        data class Case(val lat1: Double, val lon1: Double, val lat2: Double, val lon2: Double)
+        data class Case(
+            val lat1: Double,
+            val lon1: Double,
+            val lat2: Double,
+            val lon2: Double,
+        )
 
         val nearAntipodalCases =
             listOf(
