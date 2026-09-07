@@ -65,7 +65,7 @@ class RideTrackingHappyPathTest : RideTrackingE2ETestBase() {
             Thread.sleep(1_000L)
         }
 
-        // --- Page 0 (primary): speed, distance, moving time, avg speed, grade.
+        // --- Page 0 (primary): speed, distance, moving time.
         composeTestRule.waitUntilTagText(DashboardTestTags.SPEED_VALUE) { it != "0.0" }
         // Every step is fed at a constant 20 km/h, so once past cold-start
         // warm-up the displayed speed should sit close to that constant,
@@ -79,6 +79,15 @@ class RideTrackingHappyPathTest : RideTrackingE2ETestBase() {
         assertThat(composeTestRule.textOf(DashboardTestTags.METRIC_MOVING_TIME))
             .isNotEqualTo(DashboardConstants.TIME_ZERO)
 
+        // HR/cadence live in InfoBar, outside the pager — always composed
+        // regardless of page. InfoBar formats them with units/zone, so this
+        // checks for the reading, not an isolated bare number.
+        assertThat(composeTestRule.textOf(DashboardTestTags.HEART_RATE_VALUE)).contains("140")
+        assertThat(composeTestRule.textOf(DashboardTestTags.CADENCE_VALUE)).contains("85")
+
+        // --- Page 1 (speed/grade): avg speed, grade.
+        composeTestRule.swipeMetricsPagerToNextPage()
+
         // Average speed over a constant-20km/h ride should also converge
         // close to 20, allowing for the cold-start warm-up window diluting it.
         val avgSpeed = composeTestRule.textOf(DashboardTestTags.METRIC_AVG_SPEED).toDouble()
@@ -89,13 +98,7 @@ class RideTrackingHappyPathTest : RideTrackingE2ETestBase() {
         // gating, already covered by RideMetricsCalculatorTest on the JVM.
         composeTestRule.textOf(DashboardTestTags.METRIC_GRADE).toDouble()
 
-        // HR/cadence live in InfoBar, outside the pager — always composed
-        // regardless of page. InfoBar formats them with units/zone, so this
-        // checks for the reading, not an isolated bare number.
-        assertThat(composeTestRule.textOf(DashboardTestTags.HEART_RATE_VALUE)).contains("140")
-        assertThat(composeTestRule.textOf(DashboardTestTags.CADENCE_VALUE)).contains("85")
-
-        // --- Page 1 (secondary): max speed, elevation gain, calories, altitude, power.
+        // --- Page 2 (secondary): max speed, elevation gain, calories, altitude, power.
         composeTestRule.swipeMetricsPagerToNextPage()
 
         // Every fed sample reports exactly 20 km/h, so the tracked maximum
@@ -130,11 +133,12 @@ class RideTrackingHappyPathTest : RideTrackingE2ETestBase() {
         assertThat(power).isGreaterThan(0)
         assertThat(power).isLessThan(3_000)
 
-        // --- Page 2 (compass): bearing.
+        // --- Page 3 (compass): bearing.
         composeTestRule.swipeMetricsPagerToNextPage()
         assertThat(composeTestRule.textOf(DashboardTestTags.COMPASS_BEARING)).isEqualTo("0°")
 
         // Back to page 0 before the post-stop reset check below.
+        composeTestRule.swipeMetricsPagerToPreviousPage()
         composeTestRule.swipeMetricsPagerToPreviousPage()
         composeTestRule.swipeMetricsPagerToPreviousPage()
 

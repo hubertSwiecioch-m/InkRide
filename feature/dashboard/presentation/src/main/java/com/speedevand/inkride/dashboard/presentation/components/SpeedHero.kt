@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.text.TextMMD
 import com.speedevand.inkride.dashboard.presentation.DashboardTestTags
@@ -22,12 +23,16 @@ import com.speedevand.inkride.dashboard.presentation.R
  * The primary glanceable readout: current speed. The number scales with the
  * available width so it stays as large as possible on big displays without
  * clipping on small E-Ink panels. Caption-on-top keeps it visually consistent
- * with the supporting [MetricItem] grid below it.
+ * with the supporting [MetricItem] grid below it. [pageHeight] additionally
+ * caps the scale so this hero number can't by itself push the metric rows
+ * below it off a short panel -- width alone isn't a safe signal, since a wide
+ * panel can still be short.
  */
 @Composable
 fun SpeedHero(
     speed: String,
     unit: String,
+    pageHeight: Dp,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -44,9 +49,14 @@ fun SpeedHero(
             // Scale the headline to the panel: large where there's room, smaller
             // on narrow screens. Bounds keep it readable without overflowing.
             // Speed updates on every GPS sample, so this is remembered by
-            // maxWidth (constant for a fixed-size panel) to avoid recomputing
-            // it on every tick.
-            val heroSize = remember(maxWidth) { (maxWidth.value * 0.32f).coerceIn(56f, 88f).sp }
+            // maxWidth/pageHeight (both constant for a fixed-size panel) to
+            // avoid recomputing it on every tick.
+            val heroSize =
+                remember(maxWidth, pageHeight) {
+                    val widthBased = (maxWidth.value * 0.32f).coerceIn(56f, 88f)
+                    val heightBased = pageHeight.value * 0.22f
+                    widthBased.coerceAtMost(heightBased).coerceAtLeast(32f).sp
+                }
             TextMMD(
                 text = speed,
                 style = DashboardTextStyles.hero(heroSize),

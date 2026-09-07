@@ -2,6 +2,7 @@ package com.speedevand.inkride.dashboard.presentation.components
 
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -24,9 +27,28 @@ import com.speedevand.inkride.dashboard.presentation.model.RideMetricsUi
 
 enum class DashboardPage {
     PRIMARY,
+    SPEED_GRADE,
     SECONDARY,
     COMPASS,
 }
+
+/**
+ * The pages [MetricsPager] shows, in swipe order, gated on which metrics the
+ * user has enabled. Kept as a single source of truth so the pager's own
+ * content and [rememberPagerState]'s `pageCount` in `DashboardScreen` can
+ * never drift out of sync with each other.
+ */
+fun visibleDashboardPages(settings: UserSettings): List<DashboardPage> =
+    buildList {
+        add(DashboardPage.PRIMARY)
+        if (settings.showAverageSpeed || settings.showGrade) add(DashboardPage.SPEED_GRADE)
+        val hasSecondary =
+            settings.showMaxSpeed || settings.showElevationGain ||
+                settings.showCalories || settings.showAltitude ||
+                settings.showPower
+        if (hasSecondary) add(DashboardPage.SECONDARY)
+        if (settings.showCompass) add(DashboardPage.COMPASS)
+    }
 
 @Composable
 fun MetricsPager(
@@ -35,18 +57,7 @@ fun MetricsPager(
     settings: UserSettings,
     modifier: Modifier = Modifier,
 ) {
-    val visiblePages =
-        remember(settings) {
-            mutableListOf<DashboardPage>().apply {
-                add(DashboardPage.PRIMARY)
-                val hasSecondary =
-                    settings.showMaxSpeed || settings.showElevationGain ||
-                        settings.showCalories || settings.showAltitude ||
-                        settings.showPower
-                if (hasSecondary) add(DashboardPage.SECONDARY)
-                if (settings.showCompass) add(DashboardPage.COMPASS)
-            }
-        }
+    val visiblePages = remember(settings) { visibleDashboardPages(settings) }
 
     VerticalPager(
         state = pagerState,
@@ -61,6 +72,7 @@ fun MetricsPager(
         val page = visiblePages.getOrNull(pageIndex)
         when (page) {
             DashboardPage.PRIMARY -> PrimaryMetricsPage(metrics = metrics, settings = settings)
+            DashboardPage.SPEED_GRADE -> SpeedGradeMetricsPage(metrics = metrics, settings = settings)
             DashboardPage.SECONDARY -> SecondaryMetricsPage(metrics = metrics, settings = settings)
             DashboardPage.COMPASS -> Compass(bearing = metrics.bearingDegrees)
             null -> Unit
@@ -73,26 +85,23 @@ private fun PrimaryMetricsPage(
     metrics: RideMetricsUi,
     settings: UserSettings,
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        SpeedHero(speed = metrics.currentSpeedKmh, unit = metrics.speedUnit)
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val pageHeight = maxHeight
+        Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            SpeedHero(speed = metrics.currentSpeedKmh, unit = metrics.speedUnit, pageHeight = pageHeight)
 
-        val showDistanceRow = settings.showDistance || settings.showMovingTime
-        val showSpeedGradeRow = settings.showAverageSpeed || settings.showGrade
-        if (showDistanceRow || showSpeedGradeRow) {
-            HorizontalDividerMMD(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.5f)
-                        .padding(vertical = DesignConstants.PADDING_MEDIUM),
-            )
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(DesignConstants.PADDING_LARGE)) {
+            val showDistanceRow = settings.showDistance || settings.showMovingTime
             if (showDistanceRow) {
+                HorizontalDividerMMD(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(0.5f)
+                            .padding(vertical = DesignConstants.PADDING_MEDIUM),
+                )
                 MetricRow {
                     if (settings.showDistance) {
                         MetricItem(
@@ -114,27 +123,44 @@ private fun PrimaryMetricsPage(
                     }
                 }
             }
-            if (showSpeedGradeRow) {
-                MetricRow {
-                    if (settings.showAverageSpeed) {
-                        MetricItem(
-                            label = stringResource(R.string.dashboard_metric_avg_speed),
-                            value = metrics.averageSpeedKmh,
-                            unit = metrics.speedUnit,
-                            modifier = Modifier.weight(1f),
-                            valueTestTag = DashboardTestTags.METRIC_AVG_SPEED,
-                        )
-                    }
-                    if (settings.showGrade) {
-                        MetricItem(
-                            label = stringResource(R.string.dashboard_metric_grade),
-                            value = metrics.gradePercent,
-                            unit = "%",
-                            modifier = Modifier.weight(1f),
-                            valueTestTag = DashboardTestTags.METRIC_GRADE,
-                        )
-                    }
-                }
+        }
+    }
+}
+
+/**
+ * Average speed / grade, split out from [PrimaryMetricsPage] onto its own
+ * page (rather than sharing it with the distance/moving-time row) so the
+ * hero speed readout never has to shrink to make room for a second row on a
+ * short panel -- see the pageHeight-based cap in [SpeedHero].
+ */
+@Composable
+private fun SpeedGradeMetricsPage(
+    metrics: RideMetricsUi,
+    settings: UserSettings,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        MetricRow {
+            if (settings.showAverageSpeed) {
+                MetricItem(
+                    label = stringResource(R.string.dashboard_metric_avg_speed),
+                    value = metrics.averageSpeedKmh,
+                    unit = metrics.speedUnit,
+                    modifier = Modifier.weight(1f),
+                    valueTestTag = DashboardTestTags.METRIC_AVG_SPEED,
+                )
+            }
+            if (settings.showGrade) {
+                MetricItem(
+                    label = stringResource(R.string.dashboard_metric_grade),
+                    value = metrics.gradePercent,
+                    unit = "%",
+                    modifier = Modifier.weight(1f),
+                    valueTestTag = DashboardTestTags.METRIC_GRADE,
+                )
             }
         }
     }
@@ -146,7 +172,7 @@ private fun SecondaryMetricsPage(
     settings: UserSettings,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

@@ -36,6 +36,8 @@ class RideTrackingGpsQualityTest : RideTrackingE2ETestBase() {
 
         val distanceBeforeDropout = composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE).toDouble()
 
+        // Page 1 is speed/grade; page 2 (secondary) is where altitude lives.
+        composeTestRule.swipeMetricsPagerToNextPage()
         composeTestRule.swipeMetricsPagerToNextPage()
         val altitudeBeforeDropout = composeTestRule.textOf(DashboardTestTags.METRIC_ALTITUDE).toDouble()
 
@@ -61,6 +63,7 @@ class RideTrackingGpsQualityTest : RideTrackingE2ETestBase() {
         assertThat(altitudeAfterDropout).isGreaterThan(altitudeBeforeDropout)
         assertThat(altitudeAfterDropout).isLessThanOrEqualTo(130.0)
 
+        composeTestRule.swipeMetricsPagerToPreviousPage()
         composeTestRule.swipeMetricsPagerToPreviousPage()
         assertThat(composeTestRule.textOf(DashboardTestTags.METRIC_DISTANCE).toDouble())
             .isEqualTo(distanceBeforeDropout)
