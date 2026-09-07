@@ -1,12 +1,9 @@
 name: Setup build environment
-description: Checks out the repo, sets up JDK 21 and Gradle, and makes gradlew executable
+description: Sets up JDK 21 and Gradle, and makes gradlew executable. Requires actions/checkout to have already run.
 
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
